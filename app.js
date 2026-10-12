@@ -797,6 +797,66 @@ men kler den nye tekst på bagefter og sætter markøren tilbage på plads. */
     }
   }
 
+  /* ---------- et brev nogen har sendt videre ----------
+     Linket bærer ikke teksten, men et lille fingeraftryk af de to linjer og
+     af datoen (d=2026-10-12&c=a3f9z&q=b21cq). Så skriver maskinen præcis det
+     samme brev hos modtageren, uden at linket bliver langt. Fingeraftrykket
+     holder også hvis rækkefølgen i listerne er ændret siden. Er linjen blevet
+     rettet, så aftrykket ikke findes mere, skriver vi dagens linje i stedet. */
+  const FP_LEN = 5;                     // 36^5 muligheder — nok til at skelne 1000 linjer
+
+  function fingerprint(text) {
+    const t = String(text).toLowerCase().replace(/\s+/g, ' ').trim();
+    let h = 0x811c9dc5;                 // FNV-1a, 32 bit
+    for (let i = 0; i < t.length; i++) {
+      h ^= t.charCodeAt(i);
+      h = Math.imul(h, 16777619) >>> 0;
+    }
+    return (h % 60466176).toString(36).padStart(FP_LEN, '0');
+  }
+
+  // finder linjen med det aftryk; line() er den tekst der står på brevet
+  function findByPrint(list, print, line) {
+    if (!print) return null;
+    for (let i = 0; i < list.length; i++) {
+      if (fingerprint(line(list[i])) === print) return list[i];
+    }
+    return null;
+  }
+
+  function dayStamp(d) {
+    const p = (n) => String(n).padStart(2, '0');
+    return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate());
+  }
+
+  function dateFromStamp(s) {
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s || '');
+    if (!m) return null;
+    const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+    return isFinite(d.getTime()) ? d : null;
+  }
+
+  const complimentList = () => (content.compliments.length ? content.compliments : DEFAULTS.compliments);
+
+  function readShared() {
+    let p;
+    try { p = new URLSearchParams(window.location.search); } catch (e) { return null; }
+    const cPrint = p.get('c');
+    const qPrint = p.get('q');
+    if (!cPrint && !qPrint) return null;
+    const compliment = findByPrint(complimentList(), cPrint, lineOf);
+    const question = findByPrint(questionsList(), qPrint, (it) => it.text);
+    return {
+      day: dateFromStamp(p.get('d')),
+      compliment: compliment,
+      question: question,
+      // en af linjerne findes ikke mere — den er rettet siden linket blev sendt
+      short: !!((cPrint && !compliment) || (qPrint && !question))
+    };
+  }
+
+  const sharedLetter = readShared();
+
   function revealEditor() {
     writing.hidden = false;
     if (audio) audio.paperFeed();
@@ -815,12 +875,17 @@ men kler den nye tekst på bagefter og sætter markøren tilbage på plads. */
     }
   }
 
+  // det der står på papiret lige nu — linket bygges af det
+  let shown = null;
+
   async function runSequence() {
     const token = ++runToken;             // en ny runde afbryder den forrige
-    const compliment = pickCompliment();
-    const question = dayQuestion();
+    const compliment = (sharedLetter && sharedLetter.compliment) || pickCompliment();
+    const question = (sharedLetter && sharedLetter.question) || dayQuestion();
+    const day = (sharedLetter && sharedLetter.day) || new Date();
+    shown = { compliment: compliment, question: question, day: day };
 
-    await typeLine(lineDate, formatDate(new Date()), token);
+    await typeLine(lineDate, formatDate(day), token);
     if (token !== runToken) return;
     if (!state.skip) await sleep(420);
     tape.classList.add('is-on');          // klask tapen på, lige før der skrives
@@ -881,6 +946,11 @@ men kler den nye tekst på bagefter og sætter markøren tilbage på plads. */
       state.skip = true;
     }
   }, true);
+
+  // er man landet på et delt link, ligger brevet allerede og venter i maskinen
+  if (sharedLetter && !sharedLetter.short) {
+    hint.innerHTML = '<span class="hint__key">&#9095;</span> et brev til dig \u2014 tryk for at l\u00e6se det';
+  }
 
   hint.addEventListener('click', begin);
 
@@ -1227,33 +1297,67 @@ men kler den nye tekst på bagefter og sætter markøren tilbage på plads. */
     }
   });
 
+  // linket til det brev der står på papiret — kort, og uden selve teksten i sig
+  function letterLink() {
+    const canon = document.querySelector('link[rel="canonical"]');
+    // er siden åbnet som en fil på maskinen, findes der ingen adresse at dele;
+    // så peger vi på den udgivne side i stedet
+    const base = (window.location.protocol === 'file:' && canon)
+      ? canon.href
+      : window.location.origin + window.location.pathname;
+    if (!shown) return base;
+    const p = new URLSearchParams();
+    p.set('d', dayStamp(shown.day));
+    p.set('c', fingerprint(lineOf(shown.compliment)));
+    p.set('q', fingerprint(shown.question.text));
+    return base + '?' + p.toString();
+  }
+
+  function legacyCopy(text) {
+    try {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.setAttribute('readonly', '');
+      ta.style.position = 'fixed';
+      ta.style.top = '-1000px';
+      document.body.appendChild(ta);
+      ta.select();
+      const ok = document.execCommand('copy');
+      ta.remove();
+      return ok;
+    } catch (e) { return false; }
+  }
+
+  function copyText(text) {
+    const done = (ok) => ok;
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      return navigator.clipboard.writeText(text).then(
+        () => done(true),
+        () => done(legacyCopy(text))
+      );
+    }
+    return Promise.resolve(done(legacyCopy(text)));
+  }
+
   btnShare.addEventListener('click', async function () {
-    const text = letterText();
-    const title = 'Dagens brev';
+    const url = letterLink();
+
+    // adresselinjen viser nu netop dette brev, så linket altid kan hentes derfra
+    try { window.history.replaceState(null, '', url); } catch (e) {}
 
     if (navigator.share) {
       try {
-        if (navigator.canShare) {
-          const cv = await renderLetterCanvas(2);
-          const blob = await new Promise(function (res) { cv.toBlob(res, 'image/png'); });
-          if (blob && typeof File === 'function') {
-            const file = new File([blob], 'dagens-brev.png', { type: 'image/png' });
-            if (navigator.canShare({ files: [file] })) {
-              await navigator.share({ files: [file], title: title, text: text });
-              return;
-            }
-          }
-        }
-        await navigator.share({ title: title, text: text });
+        await navigator.share({ title: 'Dagens brev', text: letterText(), url: url });
         return;
       } catch (e) {
         if (e && e.name === 'AbortError') return;
       }
     }
 
-    say('\u00e5bner din mail med brevet');
-    window.location.href = 'mailto:?subject=' + encodeURIComponent('Dagens brev \u2014 mit svar') +
-                           '&body=' + encodeURIComponent(text);
+    const ok = await copyText(url);
+    say(ok
+      ? 'linket til brevet ligger i udklipsholderen'
+      : 'linket st\u00e5r i adresselinjen \u2014 kopi\u00e9r det derfra');
   });
 
   /* ============================================================
