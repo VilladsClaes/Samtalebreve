@@ -1,0 +1,45 @@
+name: Udgiv brevet
+
+# Brevet er en flad side: index.html, app.js, data.js og style.css.
+# Hver gang main får nyt indhold, lægges filerne direkte op på GitHub Pages,
+# så adressen altid viser den nyeste version uden at du skal gøre noget.
+
+on:
+  push:
+    branches: [main]
+  # så du også kan udgive manuelt fra Actions-fanen
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Kun én udgivelse ad gangen, og en igangværende må gerne løbe færdig.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  udgiv:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Hent filerne
+        uses: actions/checkout@v7
+
+      - name: Klargør GitHub Pages
+        uses: actions/configure-pages@v6
+
+      - name: Pak siden
+        uses: actions/upload-pages-artifact@v5
+        with:
+          # Hele roden af repoet. Skjulte filer — .git, .github, .gitattributes —
+          # holdes automatisk ude af pakken.
+          path: .
+
+      - name: Læg den op
+        id: deployment
+        uses: actions/deploy-pages@v5
