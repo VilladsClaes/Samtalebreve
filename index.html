@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Dagens brev</title>
+  <meta name="description" content="Et kompliment og dagens spørgsmål, skrevet på en gammel skrivemaskine.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Special+Elite&family=Courier+Prime:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css?v=26">
+</head>
+<body>
+
+  <div class="desk">
+    <main class="sheet" id="sheet" aria-label="Dagens brev">
+      <div class="sheet__grain" aria-hidden="true"></div>
+      <div class="sheet__mottle" aria-hidden="true"></div>
+      <div class="sheet__edge" aria-hidden="true"></div>
+
+      <article class="letter">
+        <p class="line line--date" id="lineDate" aria-hidden="true"></p>
+        <div class="tape" id="tape">
+          <p class="line line--compliment" id="lineCompliment"></p>
+        </div>
+        <p class="line line--question" id="lineQuestion"></p>
+
+        <section class="writing" id="writing" hidden>
+          <div class="toolbar" id="toolbar" role="toolbar" aria-label="Formatering">
+            <button type="button" data-cmd="bold" title="Fed"><b>B</b></button>
+            <button type="button" data-cmd="italic" title="Kursiv"><i>I</i></button>
+            <button type="button" data-cmd="underline" title="Understreget"><u>U</u></button>
+            <button type="button" data-cmd="insertUnorderedList" title="Punktliste">&#8226;&#8212;</button>
+            <button type="button" data-cmd="removeFormat" title="Ryd formatering">&#10005;</button>
+          </div>
+          <div class="editor" id="editor" contenteditable="true" spellcheck="true"
+               inputmode="text" enterkeyhint="enter" autocapitalize="sentences"
+               role="textbox" aria-multiline="true" aria-label="Dit svar"
+               data-placeholder="Skriv dit svar her, som var det på en skrivemaskine …"></div>
+          <div class="actions" id="actions">
+            <button type="button" id="btnPrint"><span aria-hidden="true">&#9095;</span> gem som PDF</button>
+            <button type="button" id="btnImage"><span aria-hidden="true">&#8681;</span> gem som billede</button>
+            <button type="button" id="btnShare"><span aria-hidden="true">&#8599;</span> send videre</button>
+          </div>
+          <p class="signoff" aria-hidden="true">— brevet l&aelig;gges i skuffen —</p>
+        </section>
+      </article>
+
+      <!-- blækklatter lægges her, så de blander sig med papiret -->
+      <div class="ink" id="inkLayer" aria-hidden="true"></div>
+    </main>
+  </div>
+
+  <!-- filter der river kanterne på malertapen -->
+  <svg class="svg-defs" aria-hidden="true" focusable="false">
+    <filter id="tapeEdge" x="-8%" y="-16%" width="116%" height="132%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.022 0.9" numOctaves="3" seed="9" result="n"/>
+      <feDisplacementMap in="SourceGraphic" in2="n" scale="6" xChannelSelector="R" yChannelSelector="G"/>
+    </filter>
+  </svg>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <div class="hint" id="hint" role="button" tabindex="0">
+    <span class="hint__key">&#9095;</span> tryk for at t&aelig;nde skrivemaskinen
+  </div>
+
+  <div class="controls">
+    <button class="ctl" id="btnMusic" type="button" aria-pressed="true" title="Klaver-musik til/fra">
+      <span class="ctl__ico">&#9834;</span><span class="ctl__txt">klaver</span>
+    </button>
+    <button class="ctl" id="btnSound" type="button" aria-pressed="true" title="Skrivemaskine-lyde til/fra">
+      <span class="ctl__ico">&#9835;</span><span class="ctl__txt">anslag</span>
+    </button>
+    <button class="ctl" id="btnAdmin" type="button" title="Rediger komplimenter og spørgsmål">
+      <span class="ctl__ico">&#9998;</span><span class="ctl__txt">indhold</span>
+    </button>
+  </div>
+
+  <!-- panelet hvor indholdet passes (kun for dig) -->
+  <div class="admin" id="admin" hidden>
+    <div class="admin__pane" role="dialog" aria-modal="true" aria-label="Rediger indhold">
+      <header class="admin__top">
+        <h2 class="admin__title">Rediger indhold</h2>
+        <div class="admin__tabs" id="adminTabs" role="tablist">
+          <button type="button" class="admin__tab is-on" data-list="compliments" role="tab">komplimenter <b id="adminCountC">0</b></button>
+          <button type="button" class="admin__tab" data-list="questions" role="tab">spørgsmål <b id="adminCountQ">0</b></button>
+        </div>
+        <button type="button" class="admin__icon" id="adminClose" aria-label="Luk panelet">&#10005;</button>
+      </header>
+
+      <div class="admin__mid">
+        <div class="admin__side">
+          <div class="admin__find">
+            <input type="search" id="adminSearch" placeholder="søg i listen …" aria-label="Søg i listen">
+            <select id="adminCat" aria-label="Filtrér på kategori"></select>
+          </div>
+          <div class="admin__dupes">
+            <label class="admin__switch"><input type="checkbox" id="adminDupes"> saml næsten ens poster i grupper</label>
+            <label class="admin__switch admin__switch--sub"><input type="checkbox" id="adminDupesBoth"> søg i begge lister på én gang</label>
+            <div class="admin__dupesRow">
+              <label for="adminDupeSens">hvor ens:</label>
+              <select id="adminDupeSens" aria-label="Hvor ens skal linjerne være">
+                <option value="sikker">sikker</option>
+                <option value="normal" selected>normal</option>
+                <option value="løs">løs</option>
+              </select>
+            </div>
+            <button type="button" id="adminDupeAll" hidden>behold forslaget i alle grupper</button>
+            <p class="admin__dupesNote">Panelet peger på den pæneste linje i hver gruppe — stort begyndelsesbogstav, afsluttende tegn og ingen sjusk. Er du uenig, så tryk <b>behold</b> på den, du hellere vil have. Med fluebenet i <b>begge lister</b> kigger den på komplimenter og spørgsmål under ét, så en linje der er ved at blive ens på tværs også bliver fanget.</p>
+          </div>
+          <ul class="admin__list" id="adminList"></ul>
+          <p class="admin__hint" id="adminListHint"></p>
+        </div>
+
+        <div class="admin__form">
+          <label class="admin__field">
+            <span class="admin__label">teksten</span>
+            <textarea id="adminText" rows="4" spellcheck="true" placeholder="skriv linjen, som den skal stå på brevet"></textarea>
+          </label>
+          <div class="admin__two">
+            <label class="admin__field">
+              <span class="admin__label">kategori</span>
+              <input type="text" id="adminItemCat" list="adminCats" placeholder="fx sjov, ordsprog">
+            </label>
+            <label class="admin__field">
+              <span class="admin__label">ophav (valgfrit)</span>
+              <input type="text" id="adminBy" placeholder="fx Storm P.">
+            </label>
+          </div>
+          <datalist id="adminCats"></datalist>
+          <p class="admin__meta" id="adminMeta"></p>
+          <div class="admin__row">
+            <button type="button" id="adminPrev">&#8593; forrige</button>
+            <button type="button" id="adminNext">&#8595; næste</button>
+            <button type="button" id="adminNew">+ ny efter</button>
+            <button type="button" id="adminDel">slet</button>
+          </div>
+        </div>
+      </div>
+
+      <footer class="admin__foot">
+        <span class="admin__status" id="adminStatus"></span>
+        <div class="admin__row">
+          <button type="button" id="adminApply">vis på brevet</button>
+          <button type="button" id="adminDownload">hent data.js</button>
+          <button type="button" id="adminReset">nulstil</button>
+          <button type="button" id="adminClose2">luk</button>
+        </div>
+      </footer>
+    </div>
+  </div>
+
+  <script src="data.js?v=26"></script>
+  <script src="app.js?v=26"></script>
+</body>
+</html>

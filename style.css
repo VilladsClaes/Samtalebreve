@@ -1,0 +1,782 @@
+/* ============================================================
+   Dagens brev — ædelt papir, gammel skrivemaskine, lidt for meget blæk
+   ============================================================ */
+
+:root {
+  --ink:        #1b1712;
+  --ink-soft:   #453b2e;
+  --paper:      #f5edd9;
+  --paper-warm: #efe4c9;
+  --desk-hi:    #3c3229;
+  --desk-lo:    #140f0b;
+
+  --font-type: 'Special Elite', 'Courier Prime', 'Courier New', ui-monospace, monospace;
+  --font-soft: 'Courier Prime', 'Courier New', ui-monospace, monospace;
+
+  /* fin papir-støj (grain) */
+  --grain: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='220' height='220'><filter id='g'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/><feColorMatrix type='saturate' values='0'/></filter><rect width='220' height='220' filter='url(%23g)'/></svg>");
+  /* langsom marmorering / aldring i papiret */
+  --mottle: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='600' height='600'><filter id='m'><feTurbulence type='fractalNoise' baseFrequency='0.012' numOctaves='3' seed='7' stitchTiles='stitch'/><feColorMatrix type='saturate' values='0'/></filter><rect width='600' height='600' filter='url(%23m)'/></svg>");
+}
+
+* { box-sizing: border-box; }
+
+html, body { height: 100%; }
+
+body {
+  margin: 0;
+  min-height: 100%;
+  font-family: var(--font-type);
+  color: var(--ink);
+  background: var(--desk-lo);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  overflow-x: hidden;
+}
+
+::selection { background: rgba(60, 46, 30, .28); }
+
+/* ---------- skrivebordet under lampen ---------- */
+
+.desk {
+  min-height: 100vh;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: clamp(18px, 5vw, 70px) clamp(12px, 4vw, 48px) clamp(90px, 12vh, 140px);
+  background:
+    radial-gradient(120% 88% at 26% -8%, rgba(255, 226, 176, .20) 0%, rgba(255, 226, 176, 0) 46%),
+    radial-gradient(150% 120% at 82% 108%, rgba(0, 0, 0, .55) 0%, rgba(0, 0, 0, 0) 62%),
+    linear-gradient(163deg, var(--desk-hi) 0%, #2a221b 42%, var(--desk-lo) 100%);
+}
+/* et svagt træ-/lærreds-mønster på bordet */
+.desk::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  opacity: .5;
+  background-image:
+    repeating-linear-gradient(91deg, rgba(255,255,255,.016) 0 2px, rgba(0,0,0,.02) 2px 5px),
+    repeating-linear-gradient(1deg, rgba(255,255,255,.012) 0 3px, rgba(0,0,0,.018) 3px 9px);
+  mix-blend-mode: overlay;
+}
+
+/* ---------- papiret ---------- */
+
+.sheet {
+  position: relative;
+  width: min(760px, 100%);
+  padding: clamp(30px, 6.2vw, 74px) clamp(26px, 6vw, 78px) clamp(40px, 7vw, 84px);
+  background:
+    radial-gradient(130% 90% at 14% 0%, rgba(255, 253, 245, .95) 0%, rgba(255, 253, 245, 0) 58%),
+    radial-gradient(120% 110% at 104% 108%, rgba(126, 100, 60, .13) 0%, rgba(126, 100, 60, 0) 60%),
+    linear-gradient(177deg, #f8f1e0 0%, #f5ecd7 38%, #f1e6cc 74%, #efe2c5 100%);
+  border-radius: 1px;
+  box-shadow:
+    0 1px 0 rgba(255, 252, 240, .85) inset,
+    0 2px 3px -1px rgba(255, 255, 255, .5),
+    0 34px 60px -26px rgba(0, 0, 0, .8),
+    0 90px 120px -60px rgba(0, 0, 0, .7);
+  animation: settle 1200ms cubic-bezier(.2, .7, .2, 1) both;
+}
+
+@keyframes settle {
+  from { transform: translateY(14px) rotate(-.35deg); opacity: 0; }
+  to   { transform: translateY(0)    rotate(-.2deg); opacity: 1; }
+}
+
+/* fin fibertekstur */
+.sheet__grain {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image: var(--grain);
+  background-size: 220px 220px;
+  opacity: .05;
+  mix-blend-mode: multiply;
+  border-radius: inherit;
+}
+/* langsom aldring i papiret */
+.sheet__mottle {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image: var(--mottle);
+  background-size: 620px 620px;
+  opacity: .05;
+  mix-blend-mode: multiply;
+  border-radius: inherit;
+}
+/* kanter: en antydning af relief og slid */
+.sheet__edge {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  box-shadow:
+    inset 0 0 0 1px rgba(88, 68, 42, .13),
+    inset 0 0 120px rgba(120, 92, 52, .16),
+    inset 0 1px 0 rgba(255, 255, 255, .5);
+}
+
+/* ---------- teksten ---------- */
+
+.letter {
+  position: relative;
+  z-index: 2;
+  font-size: clamp(16.5px, 1.55vw + 11px, 21px);
+  line-height: 1.95;
+}
+
+.line {
+  margin: 0;
+  min-height: 1.95em;
+  position: relative;
+  letter-spacing: .012em;
+}
+
+.line--date {
+  font-family: var(--font-soft);
+  font-size: .74em;
+  letter-spacing: .22em;
+  text-transform: uppercase;
+  color: rgba(60, 48, 34, .62);
+  margin-bottom: 1.5em;
+}
+
+.line--compliment { min-height: 1.95em; }
+
+.line--question {
+  margin-top: 1.15em;
+  color: var(--ink);
+}
+
+/* ---------- komplimentet står på et stykke gammel malertape ---------- */
+
+.svg-defs { position: absolute; width: 0; height: 0; overflow: hidden; }
+
+.tape {
+  position: relative;
+  display: inline-block;
+  /* indholds-boks, så tapens kant kan stikke ud over tekstens bredde */
+  box-sizing: content-box;
+  max-width: 100%;
+  padding: 15px 26px 18px;
+  margin: .55em 0 .2em -11px;
+  transform: rotate(-1.4deg);         /* klasket skævt på, som et stykke tape man lige satte hurtigt */
+  opacity: 0;                         /* vises først når komplimentet skal skrives */
+}
+
+/* gennemsigtigheden styres af klassen, så tapen ikke kan hænge halvvejs;
+   kun selve klasket er en animation */
+.tape.is-on {
+  opacity: 1;
+  animation: tapeSlap 340ms cubic-bezier(.2, 1.5, .4, 1) both;
+}
+
+@keyframes tapeSlap {
+  from { transform: rotate(-4.4deg) scale(1.05); }
+  to   { transform: rotate(-1.4deg) scale(1); }
+}
+
+.tape::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    /* de fine riller fra rullen */
+    repeating-linear-gradient(0deg,
+      rgba(255, 255, 255, .10) 0 2px,
+      rgba(96, 80, 44, .055) 2px 4px),
+    /* et par skæve folder */
+    linear-gradient(97deg, rgba(255,255,255,0) 33%, rgba(255,255,255,.14) 34.4%, rgba(255,255,255,0) 36%),
+    linear-gradient(97deg, rgba(120,100,58,0) 59%, rgba(120,100,58,.10) 60.4%, rgba(120,100,58,0) 62%),
+    /* lidt lys ovenfra, som på et gammelt stykke tape */
+    radial-gradient(130% 150% at 6% -10%, rgba(255,253,240,.6), rgba(255,253,240,0) 58%),
+    linear-gradient(179deg, #ece0ae 0%, #e4d69e 46%, #dbc98e 100%);
+  opacity: .9;
+  mix-blend-mode: multiply;            /* papiret kan ses igennem */
+  filter: url(#tapeEdge) drop-shadow(0 1px 1.5px rgba(70, 56, 30, .3));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, .45),
+    inset 0 -1px 0 rgba(120, 100, 58, .18);
+}
+
+.tape .line--compliment {
+  position: relative;
+  z-index: 1;
+  margin: 0;
+}
+
+/* et enkelt ord holdes sammen, så ordet ikke knækker midt over */
+.word { display: inline-block; white-space: nowrap; }
+
+/* hvert anslag */
+.ch {
+  display: inline-block;
+  white-space: pre;
+  opacity: 0;
+  visibility: hidden;
+  transform: translate(var(--tx, 0), var(--ty, 0)) rotate(var(--rz, 0deg)) scale(var(--sc, 1));
+  transition: opacity 110ms linear;
+}
+.ch.on {
+  opacity: var(--o, 1);
+  visibility: visible;
+}
+/* et lidt for hårdt eller dobbelt anslag */
+.ch.dbl {
+  text-shadow: .85px .4px 0 currentColor, -.45px .1px 0 currentColor;
+}
+/* blødt, gennemblødt anslag */
+.ch.wet {
+  filter: blur(.28px);
+  text-shadow: 0 .5px .7px currentColor;
+}
+
+/* mellemrum — nogle få er et par pixel for lange */
+.sp { display: inline; }
+.sp--long { padding-right: 2.5px; }
+
+/* den vandrende skrivemaskine-markør */
+.caret {
+  position: absolute;
+  width: 2px;
+  height: 1.15em;
+  margin-top: .18em;
+  background: rgba(30, 24, 18, .7);
+  pointer-events: none;
+  opacity: 0;
+  transition: left 70ms linear, top 70ms linear;
+}
+.caret.on { animation: caretBlink 900ms steps(1, end) infinite; }
+@keyframes caretBlink { 0%, 60% { opacity: .85; } 61%, 100% { opacity: 0; } }
+
+/* ---------- blækklatter ---------- */
+
+.ink {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  pointer-events: none;
+  overflow: hidden;
+  border-radius: inherit;
+}
+
+.splat {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: var(--s);
+  height: var(--s);
+  background: radial-gradient(closest-side,
+      rgba(22, 18, 14, var(--a)) 58%,
+      rgba(22, 18, 14, calc(var(--a) * .86)) 76%,
+      rgba(22, 18, 14, 0) 100%);
+  border-radius: var(--br);
+  transform: translate(-50%, -50%) rotate(var(--rot));
+  mix-blend-mode: multiply;
+  filter: blur(var(--bl, .2px));
+  animation: splatHit 260ms cubic-bezier(.15, .9, .3, 1) both;
+}
+@keyframes splatHit {
+  from { transform: translate(-50%, -50%) rotate(var(--rot)) scale(.25); opacity: 0; }
+  to   { transform: translate(-50%, -50%) rotate(var(--rot)) scale(1);   opacity: 1; }
+}
+.splat--dry {
+  background: radial-gradient(closest-side,
+      rgba(22, 18, 14, calc(var(--a) * .55)) 40%,
+      rgba(22, 18, 14, calc(var(--a) * .3)) 66%,
+      rgba(22, 18, 14, 0) 100%);
+  filter: blur(.55px);
+}
+
+/* ---------- skrivefeltet ---------- */
+
+.writing {
+  position: relative;
+  margin-top: 2.4em;
+  opacity: 0;
+  transform: translateY(10px);
+  filter: blur(2px);
+  transition: opacity 2600ms ease, transform 2600ms cubic-bezier(.2, .7, .2, 1), filter 2600ms ease;
+}
+.writing.is-shown {
+  opacity: 1;
+  transform: translateY(0);
+  filter: blur(0);
+}
+
+.toolbar {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  padding-bottom: 8px;
+  margin-bottom: 10px;
+  border-bottom: 1px dashed rgba(84, 66, 44, .28);
+  opacity: .0;
+  transition: opacity 1600ms ease 900ms;
+}
+.writing.is-shown .toolbar { opacity: .78; }
+
+.toolbar button {
+  font-family: var(--font-soft);
+  touch-action: manipulation;
+  font-size: .72rem;
+  line-height: 1;
+  color: var(--ink-soft);
+  background: rgba(255, 252, 242, .32);
+  border: 1px solid rgba(84, 66, 44, .24);
+  border-radius: 2px;
+  padding: 5px 8px;
+  cursor: pointer;
+  min-width: 30px;
+  transition: background 140ms ease, transform 90ms ease;
+}
+.toolbar button:hover { background: rgba(255, 252, 242, .75); }
+.toolbar button:active { transform: translateY(1px); }
+.toolbar button.on { background: rgba(60, 46, 30, .16); }
+
+.editor {
+  min-height: 7.5em;
+  -webkit-user-select: text;
+  user-select: text;
+  padding: 2px 2px 6px;
+  outline: none;
+  line-height: 1.95;
+  caret-color: rgba(30, 24, 18, .85);
+  word-wrap: break-word;
+  overflow-wrap: anywhere;
+}
+.editor:empty::before {
+  content: attr(data-placeholder);
+  color: rgba(70, 56, 40, .34);
+  pointer-events: none;
+}
+.editor b, .editor strong { font-weight: 700; }
+.editor i, .editor em { font-style: italic; }
+.editor u { text-underline-offset: 3px; }
+.editor ul { margin: .4em 0 .4em 1.2em; padding: 0; }
+.editor li { margin: .15em 0; }
+
+/* ---------- gem & send ---------- */
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 1.5em;
+  opacity: 0;
+  transition: opacity 2000ms ease 1000ms;
+}
+.writing.is-shown .actions { opacity: .9; }
+
+.actions button {
+  font-family: var(--font-soft);
+  touch-action: manipulation;
+  font-size: .73rem;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  background: rgba(255, 252, 242, .34);
+  border: 1px solid rgba(84, 66, 44, .26);
+  border-radius: 2px;
+  padding: 8px 12px;
+  cursor: pointer;
+  transition: background 160ms ease, transform 90ms ease, opacity 200ms ease;
+}
+.actions button span { margin-right: 6px; }
+.actions button:hover { background: rgba(255, 252, 242, .82); }
+.actions button:active { transform: translateY(1px); }
+.actions button[disabled] { opacity: .45; cursor: default; }
+
+/* en lille besked, der skrives undervejs */
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: clamp(64px, 10vh, 100px);
+  transform: translateX(-50%) translateY(8px);
+  font-family: var(--font-soft);
+  font-size: clamp(.72rem, 1.4vw, .84rem);
+  letter-spacing: .14em;
+  color: rgba(245, 233, 210, .92);
+  background: rgba(30, 24, 17, .74);
+  border: 1px solid rgba(238, 224, 194, .2);
+  border-radius: 3px;
+  padding: 9px 15px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 480ms ease, transform 480ms ease;
+  backdrop-filter: blur(3px);
+  z-index: 30;
+}
+.toast.is-on { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+.signoff {
+  margin: 1.6em 0 0;
+  text-align: right;
+  font-family: var(--font-soft);
+  font-size: .7em;
+  letter-spacing: .16em;
+  color: rgba(70, 56, 40, .38);
+  opacity: 0;
+  transition: opacity 2600ms ease 1800ms;
+}
+.writing.is-shown .signoff { opacity: 1; }
+
+/* ---------- hint ---------- */
+
+.hint {
+  position: fixed;
+  left: 50%;
+  bottom: clamp(18px, 4vh, 40px);
+  transform: translateX(-50%);
+  font-family: var(--font-soft);
+  font-size: clamp(.7rem, 1.4vw, .82rem);
+  letter-spacing: .2em;
+  text-transform: uppercase;
+  color: rgba(240, 226, 196, .62);
+  cursor: pointer;
+  user-select: none;
+  transition: opacity 700ms ease;
+  animation: hintPulse 3.4s ease-in-out infinite;
+  z-index: 20;
+}
+.hint__key {
+  display: inline-block;
+  border: 1px solid rgba(240, 226, 196, .4);
+  border-radius: 2px;
+  padding: 1px 7px 2px;
+  margin-right: 8px;
+}
+.hint.is-gone { opacity: 0; pointer-events: none; }
+@keyframes hintPulse { 0%, 100% { opacity: .5; } 50% { opacity: .92; } }
+
+/* ---------- kontroller ---------- */
+
+.controls {
+  position: fixed;
+  right: clamp(12px, 2.5vw, 26px);
+  bottom: clamp(12px, 2.5vw, 26px);
+  display: flex;
+  gap: 8px;
+  z-index: 20;
+}
+
+.ctl {
+  display: inline-flex;
+  align-items: center;
+  touch-action: manipulation;
+  gap: 7px;
+  font-family: var(--font-soft);
+  font-size: .68rem;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: rgba(238, 224, 194, .72);
+  background: rgba(30, 24, 17, .5);
+  border: 1px solid rgba(238, 224, 194, .18);
+  border-radius: 3px;
+  padding: 7px 11px;
+  cursor: pointer;
+  backdrop-filter: blur(3px);
+  transition: color 200ms ease, border-color 200ms ease, background 200ms ease;
+}
+.ctl:hover { color: #f4e8cd; border-color: rgba(238, 224, 194, .4); }
+.ctl[aria-pressed="false"] { color: rgba(238, 224, 194, .32); }
+.ctl[aria-pressed="false"] .ctl__ico { opacity: .4; }
+.ctl__ico { font-size: .95rem; line-height: 1; }
+
+/* ---------- panelet: pas indholdet (komplimenter og spørgsmål) ---------- */
+
+.admin {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: grid;
+  place-items: center;
+  padding: clamp(8px, 2.4vw, 28px);
+  background: rgba(12, 9, 6, .74);
+  backdrop-filter: blur(4px);
+  /* ingen indtoning: panelet skal stå frem, uanset om fanen er synlig */
+}
+.admin[hidden] { display: none; }     /* ellers ville display: grid vinde over hidden */
+
+.admin__pane {
+  width: min(1120px, 100%);
+  height: min(880px, 100%);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  color: var(--ink);
+  font-family: var(--font-soft);
+  font-size: 15px;
+  background: linear-gradient(178deg, #f8f2e3 0%, #f3ebd8 60%, #efe5cd 100%);
+  border-radius: 2px;
+  box-shadow: 0 30px 60px -20px rgba(0, 0, 0, .7), 0 0 0 1px rgba(70, 56, 40, .35);
+  overflow: hidden;
+}
+
+.admin__top {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 16px;
+  border-bottom: 1px solid rgba(70, 56, 40, .22);
+  background: linear-gradient(#f2e9d4, #ece1c8);
+}
+.admin__title {
+  margin: 0;
+  font-family: var(--font-type);
+  font-size: 1.05rem;
+  letter-spacing: .06em;
+}
+.admin__tabs { display: flex; gap: 6px; margin-left: auto; }
+
+.admin__tab, .admin__row button, .admin__icon {
+  font-family: var(--font-soft);
+  font-size: .84rem;
+  letter-spacing: .04em;
+  color: #3a2f22;
+  background: rgba(255, 255, 255, .42);
+  border: 1px solid rgba(70, 56, 40, .28);
+  border-radius: 2px;
+  padding: 6px 11px;
+  cursor: pointer;
+}
+.admin__tab b { font-weight: 400; opacity: .55; }
+.admin__tab:hover, .admin__row button:hover, .admin__icon:hover { background: #fff8e8; }
+.admin__tab.is-on { background: #2f2820; border-color: #2f2820; color: #f6ecd6; }
+.admin__tab.is-on b { opacity: .75; }
+.admin__tab.is-on:hover { background: #3d332a; }
+.admin__icon { padding: 5px 9px; line-height: 1; }
+
+.admin__mid { display: flex; flex: 1; min-height: 0; }
+
+.admin__side {
+  width: min(480px, 48%);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  background: rgba(255, 253, 245, .35);
+  border-right: 1px solid rgba(70, 56, 40, .22);
+}
+.admin__find { display: flex; gap: 6px; padding: 10px 12px 6px; }
+.admin__find input[type="search"] { flex: 1; min-width: 0; }
+.admin__find select { max-width: 44%; }
+.admin__find input, .admin__find select, .admin__field input, .admin__field textarea {
+  font-family: var(--font-soft);
+  font-size: .9rem;
+  color: var(--ink);
+  background: #fffdf6;
+  border: 1px solid rgba(70, 56, 40, .3);
+  border-radius: 2px;
+  padding: 6px 8px;
+}
+.admin__dupes { padding: 2px 12px 8px; font-size: .78rem; color: #5c4c38; }
+.admin__dupes label { display: flex; gap: 6px; align-items: center; cursor: pointer; }
+.admin__switch--sub { margin-top: 4px; color: rgba(60, 46, 30, .7); }
+.admin__dupesRow { display: flex; align-items: center; gap: 6px; margin-top: 5px; }
+.admin__dupesRow select { font-size: .78rem; padding: 3px 5px; }
+.admin__dupesNote { margin: 6px 0 0; line-height: 1.45; font-size: .73rem; color: rgba(60, 46, 30, .62); }
+#adminDupeAll { width: 100%; margin-top: 7px; padding: 5px 8px; font-size: .76rem; }
+
+.admin__list {
+  flex: 1;
+  min-height: 0;
+  list-style: none;
+  margin: 0;
+  padding: 0 0 8px;
+  overflow-y: auto;
+  border-top: 1px solid rgba(70, 56, 40, .16);
+}
+.admin__item {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 5px 12px;
+  line-height: 1.35;
+  border-bottom: 1px solid rgba(70, 56, 40, .1);
+  cursor: pointer;
+}
+.admin__item:hover { background: rgba(255, 255, 255, .5); }
+.admin__item.is-sel { background: #e8dcc0; box-shadow: inset 2px 0 0 #7a5c2e; }
+.admin__num { flex: none; width: 2.9em; text-align: right; font-size: .72rem; color: rgba(60, 46, 30, .45); }
+.admin__chip--from {
+  background: transparent;
+  border-style: dashed;
+  color: rgba(60, 46, 30, .62);
+}
+.admin__txt { flex: 1; overflow-wrap: anywhere; }
+.admin__chip {
+  flex: none;
+  font-weight: 400;
+  font-size: .68rem;
+  letter-spacing: .04em;
+  padding: 1px 6px;
+  color: #5b4a34;
+  background: rgba(255, 255, 255, .5);
+  border: 1px solid rgba(70, 56, 40, .3);
+  border-radius: 8px;
+}
+.admin__mini {
+  flex: none;
+  align-self: center;
+  font: inherit;
+  font-size: .7rem;
+  padding: 2px 8px;
+  color: #4c3b26;
+  background: #fff8e8;
+  border: 1px solid rgba(70, 56, 40, .35);
+  border-radius: 3px;
+  cursor: pointer;
+}
+.admin__mini:hover { background: #f6e7c6; }
+
+/* grupper af næsten ens poster */
+.admin__grp {
+  padding: 8px 10px 6px;
+  border-bottom: 1px solid rgba(70, 56, 40, .18);
+  background: rgba(255, 252, 240, .5);
+}
+.admin__grpTop {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 8px;
+  margin-bottom: 5px;
+}
+.admin__grpNum { flex: none; font-size: .72rem; letter-spacing: .06em; text-transform: uppercase; color: rgba(60, 46, 30, .6); }
+.admin__grpN { flex: 1 1 auto; min-width: 0; font-size: .73rem; color: rgba(60, 46, 30, .5); }
+.admin__mini--wide { display: block; width: 100%; margin: 0 0 5px; text-align: center; }
+.admin__grpList { list-style: none; margin: 0; padding: 0; }
+.admin__grp .admin__item { padding: 4px 0; border-bottom: 1px solid rgba(70, 56, 40, .08); }
+.admin__grp .admin__item:last-child { border-bottom: none; }
+.admin__grp .admin__txt { overflow-wrap: break-word; }
+.admin__grp .admin__item.is-sug { background: rgba(214, 234, 208, .5); box-shadow: inset 2px 0 0 #4f7a3a; }
+.admin__chip--sug { color: #3c5c2c; background: rgba(226, 244, 214, .85); border-color: rgba(79, 122, 58, .5); }
+.admin__empty { padding: 14px 12px; color: rgba(60, 46, 30, .5); }
+.admin__hint {
+  margin: 0;
+  padding: 6px 12px;
+  font-size: .74rem;
+  color: rgba(60, 46, 30, .55);
+  border-top: 1px solid rgba(70, 56, 40, .16);
+}
+
+.admin__form {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px 16px;
+  overflow-y: auto;
+}
+.admin__field { display: flex; flex-direction: column; gap: 5px; }
+.admin__label { font-size: .74rem; letter-spacing: .12em; text-transform: uppercase; color: rgba(60, 46, 30, .6); }
+.admin__field textarea { min-height: 6.5em; line-height: 1.5; resize: vertical; }
+.admin__two { display: flex; gap: 10px; }
+.admin__two .admin__field { flex: 1; min-width: 0; }
+.admin__meta { margin: 0; font-size: .78rem; color: rgba(60, 46, 30, .6); }
+.admin__row { display: flex; flex-wrap: wrap; gap: 6px; }
+#adminDel { color: #7a2f18; border-color: rgba(122, 47, 24, .4); }
+#adminApply { background: #2f2820; border-color: #2f2820; color: #f6ecd6; }
+#adminApply:hover { background: #3d332a; }
+
+.admin__foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px;
+  border-top: 1px solid rgba(70, 56, 40, .22);
+  background: linear-gradient(#f0e7d2, #e9dfc6);
+}
+.admin__status { margin-right: auto; font-size: .78rem; color: rgba(60, 46, 30, .65); }
+
+@media (max-width: 820px) {
+  .admin__mid { flex-direction: column; }
+  .admin__side { width: 100%; max-height: 44vh; border-right: none; border-bottom: 1px solid rgba(70, 56, 40, .22); }
+  .admin__form { padding: 12px; }
+  .admin__title { font-size: .95rem; }
+  .admin__two { flex-direction: column; }
+  .admin__grpTop { flex-direction: column; align-items: stretch; gap: 4px; }
+}
+
+/* ---------- responsivt ---------- */
+
+@media (max-width: 620px) {
+  .letter { font-size: clamp(16px, 4.4vw, 18.5px); }
+  .line--date { letter-spacing: .16em; }
+  .tape { padding: 12px 18px 14px; margin-left: 0; }
+  .ctl__txt { display: none; }
+  .ctl { padding: 8px 10px; }
+}
+
+/* ---------- respektér reduceret bevægelse ---------- */
+
+/* ---------- udskrift: et rent, print-venligt brev ---------- */
+
+@media print {
+  @page { margin: 20mm; }
+
+  html, body { background: #fff; }
+  .desk {
+    display: block;
+    min-height: 0;
+    padding: 0;
+    background: none;
+  }
+  .desk::before { display: none; }
+
+  .sheet {
+    width: 100%;
+    padding: 0;
+    background: #fff;
+    box-shadow: none;
+    border-radius: 0;
+    animation: none;
+    transform: none;
+  }
+  .sheet__grain, .sheet__mottle, .sheet__edge, .ink { display: none !important; }
+
+  .hint, .controls, .toast, .toolbar, .actions, .admin { display: none !important; }
+  .caret { display: none !important; }
+
+  /* alt skrevet skal stå frem, uanset animationer */
+  .ch { opacity: 1 !important; visibility: visible !important; filter: none !important; }
+  .ch.dbl { text-shadow: none !important; }
+  .writing, .signoff, .actions { opacity: 1 !important; filter: none !important; }
+
+  .letter { font-size: 12pt; line-height: 1.75; }
+  .line--date { color: #444; }
+  /* tapen skal ikke koste en formue i blæk på papir */
+  .tape { transform: none; }
+  .tape::before {
+    filter: none;
+    box-shadow: none;
+    opacity: .5;
+    mix-blend-mode: normal;
+  }
+  .editor {
+    border: 1px solid #bbb;
+    min-height: 55mm;
+    padding: 6px;
+    overflow-wrap: break-word;
+  }
+  .editor:empty::before { content: ""; }
+  .writing, .editor, .letter { break-inside: avoid; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sheet { animation: none; }
+  .hint { animation: none; opacity: .8; }
+  .ch { transition: none; }
+  .tape { opacity: 1; }
+  .tape.is-on { animation: none; }
+  .splat { animation: none; }
+  .caret { animation: none; opacity: .8; }
+  .writing { transition-duration: 600ms; }
+  .toolbar, .signoff { transition-duration: 600ms; }
+}
