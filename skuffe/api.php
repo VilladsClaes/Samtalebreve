@@ -92,10 +92,12 @@ function driver(): string
 
 function lav_skema(PDO $pdo): void
 {
+    // rettet er et tidsstempel i millisekunder, og det kan en almindelig INT
+    // ikke rumme (den holder kun til 2.1 milliarder) — derfor BIGINT
     $pdo->exec('CREATE TABLE IF NOT EXISTS skuffe ('
         . ' id INTEGER PRIMARY KEY,'
         . ' version INTEGER NOT NULL DEFAULT 0,'
-        . ' rettet INTEGER NOT NULL DEFAULT 0,'
+        . ' rettet BIGINT NOT NULL DEFAULT 0,'
         . ' data MEDIUMTEXT NOT NULL)');
     $pdo->exec('CREATE TABLE IF NOT EXISTS skuffe_indstillinger ('
         . ' navn VARCHAR(32) PRIMARY KEY,'

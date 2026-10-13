@@ -86,10 +86,12 @@ function skema_findes(PDO $pdo): bool
 
 function opret_skema(PDO $pdo): void
 {
+    // rettet er et tidsstempel i millisekunder — BIGINT, for en almindelig INT
+    // i MySQL holder kun til omkring 2.1 milliarder
     $pdo->exec('CREATE TABLE IF NOT EXISTS skuffe ('
         . ' id INTEGER PRIMARY KEY,'
         . ' version INTEGER NOT NULL DEFAULT 0,'
-        . ' rettet INTEGER NOT NULL DEFAULT 0,'
+        . ' rettet BIGINT NOT NULL DEFAULT 0,'
         . ' data MEDIUMTEXT NOT NULL)');
     $pdo->exec('CREATE TABLE IF NOT EXISTS skuffe_indstillinger ('
         . ' navn VARCHAR(32) PRIMARY KEY,'

@@ -4,7 +4,8 @@
 CREATE TABLE IF NOT EXISTS skuffe (
   id INTEGER PRIMARY KEY,
   version INTEGER NOT NULL DEFAULT 0,
-  rettet INTEGER NOT NULL DEFAULT 0,
+  -- tidsstempel i millisekunder; en almindelig INT ville løbe over
+  rettet BIGINT NOT NULL DEFAULT 0,
   data MEDIUMTEXT NOT NULL
 );
 
