@@ -8,7 +8,7 @@ og svar kan hentes på en hvilken som helst computer.
 Det er kun dig, der kan se den. Der er ingen oprettelse af brugere, ingen e-mail
 og ingen deling — serveren kender ét menneske: dig.
 
-## Hvad der skal op
+## Hvad der skal op (til `breve.villadsclaes.dk`)
 
 Læg hele siden op, som den ligger — `index.html`, `app.js`, `style.css`,
 `data.js` — og dertil denne mappe:
@@ -16,26 +16,32 @@ Læg hele siden op, som den ligger — `index.html`, `app.js`, `style.css`,
 | fil | skal op | hvorfor |
 | --- | --- | --- |
 | `skuffe/api.php` | ja | selve lageret; det er den, siden taler med |
+| `skuffe/.htaccess` | ja | lukker for at hente `config.php` direkte (virker kun på Apache) |
 | `skuffe/opsaet.php` | ja, midlertidigt | bruges én gang til at sætte det hele op — **slet den bagefter** |
 | `skuffe/skema.sql` | nej | kun hvis du hellere vil oprette tabellerne i phpMyAdmin |
-| `skuffe/config.php.example` | nej | en skabelon; `opsaet.php` skriver selv `config.php` |
+| `skuffe/config.php.example` | nej | en skabelon; `opsaet.php` skriver selv `config.php` |`skuffe/config.php` må **ikke** lægges nogen steder hen, hvor andre kan hente
+  den — den indeholder dit databasekodeord. Den står allerede i `.gitignore`,
+  og `opsaet.php` skriver den selv på serveren, så den behøver ikke være med i
+  det du lægger op.
 
-`skuffe/config.php` må **ikke** lægges nogen steder hen, hvor andre kan hente
-den — den indeholder dit databasekodeord. Den står allerede i `.gitignore`.
+  Klar-til-upload-pakken ligger som `breve-villadsclaes.dk.zip` i din
+  Downloads-mappe: den indeholder præcis de filer, der skal op, og intet andet.
 
 ## Sådan gør du
 
 1. **Læg filerne op.** Brug webhotellets filhåndtering eller FTP. Siden skal
-   ligge i samme mappe som `skuffe/`, ellers kan den ikke finde lageret.
+   ligge i samme mappe som `skuffe/`, ellers kan den ikke finde lageret. Er der
+   en filhåndtering med »udpak arkiv«, kan zip-filen lægges ind i selve
+   webmappen og pakkes ud der.
 2. **Lav en database** i webhotellets kontrolpanel (MySQL). Notér navn,
    brugernavn, kodeord og vært — det plejer at stå samme sted.
-3. **Åbn `skuffe/opsaet.php` i browseren** (fx
-   `https://ditdomæne.dk/skuffe/opsaet.php`). Den går tre trin igennem:
+3. **Åbn `skuffe/opsaet.php` i browseren**, altså
+   `https://breve.villadsclaes.dk/skuffe/opsaet.php`. Den går tre trin igennem:
    - skriver forbindelsen (du indtaster oplysningerne fra trin 2),
    - opretter de tre tabeller,
    - og lader dig vælge en **adgangskode** på mindst otte tegn.
 4. **Slet `opsaet.php` igen.** Den er brugt, og den skal ikke ligge fremme.
-5. **Åbn siden** og tryk på `▤ skuffen`. Der står nu en lille linje under
+5. **Åbn `https://breve.villadsclaes.dk/`** og tryk på `▤ skuffen`. Der står nu en lille linje under
    overskriften: *tast adgangskoden, så følger skuffen med til dine andre
    maskiner*. Skriv koden — og skuffen hentes ned på maskinen og lægges op fra
    den.
@@ -74,6 +80,13 @@ på dem, så de kan vises ordret også på en maskine, der aldrig har set brevet
   koden igen; skuffen ligger stadig i browseren imens.
 - Der kommer intet ned på den anden maskine — tjek at du faktisk er logget ind
   der; indlogningen er per browser, ikke per brev.
+
+## Domænet
+
+Brevene bygger deres links af den adresse, siden bliver åbnet på — så snart
+siden ligger på `https://breve.villadsclaes.dk/`, peger nye breve derhen af sig
+selv. Den gamle adresse på GitHub Pages bliver liggende som en kopi, og
+`<link rel="canonical">` i `index.html` peger nu på det nye domæne.
 
 ## Krav
 

@@ -1,0 +1,19 @@
+# Beskyt skuffens egne filer.
+#
+# config.php indeholder dit databasekodeord. En PHP-fil bliver normalt kørt og
+# giver ingen tekst ud, men skulle serveren en dag være sat forkert op og vise
+# filer som ren tekst, er det her kodeordet ville stå at læse. Derfor lukker vi
+# for at hente filerne direkte — PHP må stadig bruge dem.
+#
+# Bruger dit webhotel ikke Apache (eller .htaccess er slået fra), kan filen
+# bare slettes igen; den gør ingen skade, men virker heller ikke alle steder.
+
+<FilesMatch "^(config\.php|.*\.sqlite.*)$">
+  <IfModule mod_authz_core.c>
+    Require all denied
+  </IfModule>
+  <IfModule !mod_authz_core.c>
+    Order allow,deny
+    Deny from all
+  </IfModule>
+</FilesMatch>
