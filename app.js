@@ -47,6 +47,13 @@
   const skuffeLaes = document.getElementById('skuffeLaes');
   const skuffeFil = document.getElementById('skuffeFil');
   const skuffeStatus = document.getElementById('skuffeStatus');
+  const skuffeNote = document.getElementById('skuffeNote');
+  const skuffeSync = document.getElementById('skuffeSync');
+  const skuffeLogin = document.getElementById('skuffeLogin');
+  const skuffeKode = document.getElementById('skuffeKode');
+  const skuffeSyncNote = document.getElementById('skuffeSyncNote');
+  const skuffeHent = document.getElementById('skuffeHent');
+  const skuffeLogUd = document.getElementById('skuffeLogUd');
 
   /* ============================================================
      1. Blæk-styling: hvert anslag får sin egen "hårdhed"
@@ -1590,7 +1597,11 @@ men kler den nye tekst på bagefter og sætter markøren tilbage på plads. */
     try {
       const arr = JSON.parse(localStorage.getItem(SKUFFE_KEY) || '[]');
       if (!Array.isArray(arr)) return [];
-      return arr.filter(function (e) { return e && typeof e.url === 'string' && urlParts(e.url); });
+      // kun rigtige brev-links; et kort uden brevet i sig kan ikke åbnes
+      return arr.filter(function (e) {
+        const p = e && typeof e.url === 'string' ? urlParts(e.url) : null;
+        return !!(p && (p.c || p.q));
+      });
     } catch (e) { return []; }
   }
 
@@ -1654,9 +1665,12 @@ men kler den nye tekst på bagefter og sætter markøren tilbage på plads. */
     when.className = 'skuffe__when';
     when.textContent = sentWhen(entry.at) + ' \u00b7 ' + repliesLabel(part.rs.length);
 
+    // kortet bærer selv den linje, der stod på brevet. Står den der ikke (gamle
+    // kort og kort fra en fil uden tekst), skrives dagens linje i stedet.
     const line = document.createElement('span');
     line.className = 'skuffe__line';
-    line.textContent = compliment ? lineOf(compliment) : 'linjen er rettet siden \u2014 dagens linje st\u00e5r p\u00e5 brevet';
+    line.textContent = entry.linje || (compliment ? lineOf(compliment) : '')
+      || 'linjen er rettet siden \u2014 dagens linje st\u00e5r p\u00e5 brevet';
 
     const day = document.createElement('span');
     day.className = 'skuffe__day';
@@ -1696,28 +1710,70 @@ men kler den nye tekst på bagefter og sætter markøren tilbage på plads. */
     }
   }
 
-  // læg linket i skuffen. Er samme brev sendt før — nu med et svar mere i sig
-  // — bliver det ikke et nyt kort, men det gamle, der flytter op i toppen.
-  function rememberSent(url) {
-    if (!url) return;
-    const mine = urlParts(url);
-    if (!mine) return;
-
-    let hit = -1;
-    for (let i = 0; i < drawer.length; i++) {
-      const it = urlParts(drawer[i].url);
-      if (!it || !sameLetter(it, mine) || !isStartOf(it, mine)) continue;
-      // den længste fælles begyndelse er den tråd, der er ved at blive skrevet videre på
-      if (hit < 0 || urlParts(drawer[hit].url).rs.length < it.rs.length) hit = i;
+  // hvad kortet skal bære: linket, da det blev sendt — og de linjer, der stod
+  // på brevet, så kortet kan vises ordret også på en anden maskine
+  function recordOf(url) {
+    const rek = { url: url, at: Date.now() };
+    if (shown) {
+      rek.linje = lineOf(shown.compliment);
+      rek.spoergsmaal = shown.question.text;
     }
-    if (hit >= 0) drawer.splice(hit, 1);
-    drawer.unshift({ url: url, at: Date.now() });
-    if (drawer.length > SKUFFE_MAX) drawer = drawer.slice(0, SKUFFE_MAX);
+    const p = urlParts(url);
+    const svar = [];
+    if (p) {
+      for (let i = 0; i < p.rs.length; i++) {
+        const t = fromB64url(p.rs[i]);
+        if (t && t.trim()) svar.push(t.trim());
+      }
+    }
+    if (svar.length) rek.svar = svar;
+    return rek;
+  }
 
+  // lægger ét kort ind. Er samme brev sendt før — nu med et svar mere i sig —
+  // bliver det ikke et nyt kort, men det gamle, der flytter op i toppen.
+  function putCard(rek) {
+    const ind = urlParts(rek.url);
+    if (!ind || (!ind.c && !ind.q)) return 'afvist';   // ikke et brev-link
+    let hit = -1;
+    for (let k = 0; k < drawer.length; k++) {
+      const it = urlParts(drawer[k].url);
+      if (!it || !sameLetter(it, ind)) continue;
+      if (!isStartOf(it, ind) && !isStartOf(ind, it)) continue;
+      // den længste fælles begyndelse er den tråd, der skrives videre på
+      if (hit < 0 || urlParts(drawer[hit].url).rs.length < it.rs.length) hit = k;
+    }
+    if (hit < 0) { drawer.push(rek); return 'ny'; }
+
+    const har = drawer[hit];
+    const længst = ind.rs.length > urlParts(har.url).rs.length;
+    if (længst) har.url = rek.url;
+    if (rek.at > har.at) har.at = rek.at;
+    // linjen og spørgsmålet hører til brevet, ikke til tråden
+    if (rek.linje) har.linje = rek.linje;
+    if (rek.spoergsmaal) har.spoergsmaal = rek.spoergsmaal;
+    if (rek.svar && (længst || !har.svar)) har.svar = rek.svar;
+    return længst ? 'videre' : 'kendt';
+  }
+
+  function sortDrawer() {
+    drawer.sort(function (a, b) { return b.at - a.at; });
+    if (drawer.length > SKUFFE_MAX) drawer = drawer.slice(0, SKUFFE_MAX);
+  }
+
+  function keepDrawer() {
+    sortDrawer();
     const kept = saveDrawer(drawer);
     if (kept) drawer = kept;
     else say('skuffen kunne ikke gemmes i denne browser');
+  }
+
+  function rememberSent(url) {
+    if (!url) return;
+    if (putCard(recordOf(url)) === 'afvist') return;
+    keepDrawer();
     renderDrawer();
+    syncGem();                    // op på serveren, hvis man er logget ind
   }
 
   function openDrawer() {
@@ -1729,6 +1785,8 @@ men kler den nye tekst på bagefter og sætter markøren tilbage på plads. */
     drawerStatus(drawer.length
       ? 'det du har sendt videre \u2014 tryk p\u00e5 et brev for at \u00e5bne det'
       : 'skuffen er tom endnu');
+    // kigger man i skuffen efter et stykke tid, hentes der lige en frisk kopi ned
+    if (sync.indlogget && Date.now() - sync.sidst > 15000) syncHent(true);
   }
 
   function closeDrawer() {
@@ -1756,7 +1814,13 @@ men kler den nye tekst på bagefter og sætter markøren tilbage på plads. */
   const SKUFFE_FILE_MAX = 1024 * 1024;    // en fuld skuffe fylder ~70 kB
 
   function drawerFileText() {
-    const breve = drawer.map(function (e) { return { url: e.url, at: e.at }; });
+    const breve = drawer.map(function (e) {
+      const ud = { url: e.url, at: e.at };
+      if (e.linje) ud.linje = e.linje;
+      if (e.spoergsmaal) ud.spoergsmaal = e.spoergsmaal;
+      if (e.svar && e.svar.length) ud.svar = e.svar;
+      return ud;
+    });
     return JSON.stringify({
       skuffen: SKUFFE_FILE,
       hentet: new Date().toISOString(),
@@ -1797,10 +1861,21 @@ men kler den nye tekst på bagefter og sætter markøren tilbage på plads. */
       try { url = letterBase() + new URL(it.url, window.location.href).search; } catch (e) { continue; }
       const at = Number(it.at);
       const dag = dateFromStamp(p.d);
-      ud.push({
+      const kort = {
         url: url,
         at: isFinite(at) && at > 0 ? at : (dag ? dag.getTime() : Date.now())
-      });
+      };
+      // linjen og svarene kan følge med i filen, så kortet står ordret
+      if (typeof it.linje === 'string' && it.linje.trim()) kort.linje = it.linje.trim();
+      if (typeof it.spoergsmaal === 'string' && it.spoergsmaal.trim()) kort.spoergsmaal = it.spoergsmaal.trim();
+      if (Array.isArray(it.svar)) {
+        const svar = [];
+        for (let k = 0; k < it.svar.length && svar.length < SKUFFE_MAX; k++) {
+          if (typeof it.svar[k] === 'string' && it.svar[k].trim()) svar.push(it.svar[k].trim());
+        }
+        if (svar.length) kort.svar = svar;
+      }
+      ud.push(kort);
     }
     return ud;
   }
@@ -1810,20 +1885,11 @@ men kler den nye tekst på bagefter og sætter markøren tilbage på plads. */
   function mergeDrawer(ind) {
     let nye = 0, videre = 0;
     for (let i = 0; i < ind.length; i++) {
-      const ind_ = urlParts(ind[i].url);
-      let hit = -1;
-      for (let k = 0; k < drawer.length; k++) {
-        const it = urlParts(drawer[k].url);
-        if (!it || !sameLetter(it, ind_)) continue;
-        if (!isStartOf(it, ind_) && !isStartOf(ind_, it)) continue;
-        if (hit < 0 || urlParts(drawer[hit].url).rs.length < it.rs.length) hit = k;
-      }
-      if (hit < 0) { drawer.push(ind[i]); nye++; continue; }
-      if (ind_.rs.length > urlParts(drawer[hit].url).rs.length) { drawer[hit].url = ind[i].url; videre++; }
-      if (ind[i].at > drawer[hit].at) drawer[hit].at = ind[i].at;
+      const hvad = putCard(ind[i]);
+      if (hvad === 'ny') nye++;
+      else if (hvad === 'videre') videre++;
     }
-    drawer.sort(function (a, b) { return b.at - a.at; });
-    if (drawer.length > SKUFFE_MAX) drawer = drawer.slice(0, SKUFFE_MAX);
+    sortDrawer();
     return { nye: nye, videre: videre };
   }
 
@@ -1848,6 +1914,182 @@ men kler den nye tekst på bagefter og sætter markøren tilbage på plads. */
     if (ud.videre) msg += ' \u00b7 ' + ud.videre + (ud.videre === 1 ? ' tr\u00e5d' : ' tr\u00e5de') + ' f\u00f8rt videre';
     if (!ud.nye && !ud.videre) msg += ' \u00b7 de stod her allerede';
     drawerStatus(msg);
+    syncGem();
+  }
+
+  /* ---------- skuffen på serveren ----------
+     Ligger der en skuffe/api.php ved siden af brevet — altså på et webhotel med
+     PHP — kan skuffen følge med til dine andre maskiner. Er der ingen, virker
+     skuffen som før: kun her i browseren, og med filen som den eneste vej over.
+     Linket er stadig det, modtageren fik; det er skuffens kort og de linjer,
+     der stod på dem, der bliver gemt. Serveren kender kun ét menneske: dig. */
+  const SKUFFE_API = 'skuffe/api.php';
+
+  const sync = {
+    findes: false,      // er der en backend at tale med
+    sat: false,         // er der valgt en adgangskode derude
+    indlogget: false,
+    version: 0,
+    travl: false,
+    sidst: 0,
+    fejl: ''
+  };
+
+  async function api(handling, krop) {
+    const valg = { credentials: 'same-origin', cache: 'no-store' };
+    if (krop) {
+      valg.method = 'POST';
+      valg.headers = { 'Content-Type': 'application/json' };
+      valg.body = JSON.stringify(krop);
+    }
+    try {
+      const s = await fetch(SKUFFE_API + '?handling=' + encodeURIComponent(handling), valg);
+      let data = null;
+      try { data = await s.json(); } catch (e) { data = null; }
+      return { kode: s.status, data: data };
+    } catch (e) {
+      return { kode: 0, data: null };        // ingen server, intet net
+    }
+  }
+
+  function klokken(ms) {
+    const d = new Date(ms);
+    const p2 = (v) => String(v).padStart(2, '0');
+    return p2(d.getHours()) + ':' + p2(d.getMinutes());
+  }
+
+  // teksten i skuffen skifter, når der er en server at følge med på
+  function noteText() {
+    if (!skuffeNote) return;
+    skuffeNote.textContent = sync.findes
+      ? 'Her l\u00e6gger de breve sig, du sender videre \u2014 ikke som en kopi, men som det link, '
+        + 'modtageren fik. Er du logget ind, f\u00f8lger skuffen og brevenes tekst med til dine andre '
+        + 'maskiner; brevet selv rejser stadig kun som det link, modtageren fik.'
+      : 'Her l\u00e6gger de breve sig, du sender videre \u2014 ikke som en kopi, men som det link, '
+        + 'modtageren fik. Tryk p\u00e5 et brev for at \u00e5bne det, pr\u00e6cis som det blev sendt. '
+        + 'Kun denne browser kan se skuffen, men den kan gemmes som en fil og l\u00e6ses ind et andet sted.';
+  }
+
+  // skuffen fortæller selv, hvor den står henne
+  function visSync() {
+    if (guest) return;
+    noteText();
+    if (!skuffeSync) return;
+    skuffeSync.hidden = !sync.findes;
+    if (!sync.findes) return;
+    if (skuffeLogin) skuffeLogin.hidden = sync.indlogget || !sync.sat;
+    if (skuffeLogUd) skuffeLogUd.hidden = !sync.indlogget;
+    if (skuffeHent) skuffeHent.hidden = !sync.indlogget;
+    if (!skuffeSyncNote) return;
+    if (!sync.sat) {
+      skuffeSyncNote.textContent = 'skuffen er ikke sat op p\u00e5 serveren endnu \u2014 \u00e5bn skuffe/opsaet.php p\u00e5 dit webhotel';
+    } else if (sync.fejl) {
+      skuffeSyncNote.textContent = sync.fejl;
+    } else if (!sync.indlogget) {
+      skuffeSyncNote.textContent = 'tast adgangskoden, s\u00e5 f\u00f8lger skuffen med til dine andre maskiner';
+    } else {
+      skuffeSyncNote.textContent = 'du er logget ind'
+        + (sync.sidst ? ' \u00b7 hentet ' + klokken(sync.sidst) : '');
+    }
+  }
+
+  async function syncTjek() {
+    if (guest || sync.travl) return;
+    sync.travl = true;
+    const s = await api('hvem');
+    sync.travl = false;
+    if (s.kode !== 200 || !s.data) { sync.findes = false; visSync(); return; }
+    sync.findes = true;
+    sync.sat = !!s.data.sat_op;
+    sync.indlogget = !!s.data.indlogget;
+    if (sync.indlogget) sync.fejl = '';
+    visSync();
+    if (sync.indlogget) await syncHent(true);
+  }
+
+  async function syncHent(stille) {
+    if (guest || !sync.indlogget) return;
+    const s = await api('skuffe');
+    if (s.kode !== 200 || !s.data || !Array.isArray(s.data.brev)) {
+      sync.fejl = s.kode === 401
+        ? 'du er ikke logget ind l\u00e6ngere \u2014 tast adgangskoden igen'
+        : 'kunne ikke hente skuffen fra serveren lige nu';
+      if (s.kode === 401) sync.indlogget = false;
+      visSync();
+      return;
+    }
+    const fra = s.data.brev;
+    sync.version = Number(s.data.version) || 0;
+    const ud = mergeDrawer(fra);
+    keepDrawer();
+    renderDrawer();
+    sync.sidst = Date.now();
+    sync.fejl = '';
+    visSync();
+    if (ud.nye || ud.videre) {
+      const dele = [];
+      if (ud.nye) dele.push(ud.nye === 1 ? '1 nyt brev' : ud.nye + ' nye breve');
+      // en tråd der er skrevet videre på den anden maskine, er ikke et nyt brev
+      if (ud.videre) dele.push(ud.videre === 1 ? '1 tr\u00e5d f\u00f8rt videre' : ud.videre + ' tr\u00e5de f\u00f8rt videre');
+      drawerStatus('hentet fra serveren \u00b7 ' + dele.join(' \u00b7 '));
+    }
+    // kort, serveren ikke kender \u2014 fordi de blev sendt f\u00f8r du loggede ind \u2014 l\u00e6gges op
+    if (!stille && JSON.stringify(drawer) !== JSON.stringify(fra)) await syncGem();
+  }
+
+  async function syncGem() {
+    if (guest || !sync.indlogget || sync.travl) return;
+    sync.travl = true;
+    let s = await api('skuffe', { version: sync.version, breve: drawer });
+    if (s.kode === 200 && s.data && s.data.stale) {
+      // en anden maskine kom f\u00f8rst: l\u00e6g sammen og pr\u00f8v \u00e9n gang til
+      mergeDrawer(Array.isArray(s.data.brev) ? s.data.brev : []);
+      keepDrawer();
+      renderDrawer();
+      sync.version = Number(s.data.version) || 0;
+      s = await api('skuffe', { version: sync.version, breve: drawer });
+    }
+    sync.travl = false;
+    if (s.kode === 200 && s.data) {
+      sync.version = Number(s.data.version) || sync.version;
+      sync.sidst = Date.now();
+      sync.fejl = '';
+    } else if (s.kode === 401) {
+      sync.indlogget = false;
+      sync.fejl = 'du er ikke logget ind l\u00e6ngere \u2014 tast adgangskoden igen';
+    } else {
+      sync.fejl = 'kunne ikke gemme p\u00e5 serveren lige nu \u2014 skuffen ligger her endnu';
+    }
+    visSync();
+  }
+
+  async function syncLogInd(kode) {
+    const s = await api('log-ind', { kode: kode });
+    if (s.kode === 200 && s.data && s.data.indlogget) {
+      sync.indlogget = true;
+      sync.fejl = '';
+      visSync();
+      drawerStatus('du er logget ind \u2014 skuffen hentes');
+      await syncHent();            // det der ligger derude kommer ned
+      await syncGem();             // og det der ligger her kommer op
+    } else if (s.kode === 429) {
+      sync.fejl = 'for mange fors\u00f8g \u2014 pr\u00f8v igen om et kvarter';
+      visSync();
+    } else if (s.kode === 500) {
+      sync.fejl = 'skuffen er ikke sat op p\u00e5 serveren endnu';
+      visSync();
+    } else {
+      sync.fejl = 'forkert adgangskode';
+      visSync();
+    }
+  }
+
+  async function syncLogUd() {
+    await api('log-ud', {});
+    sync.indlogget = false;
+    sync.fejl = '';
+    visSync();
+    drawerStatus('du er logget ud \u2014 skuffen ligger stadig her i browseren');
   }
 
   if (!guest) {
@@ -1865,11 +2107,24 @@ men kler den nye tekst på bagefter og sætter markøren tilbage på plads. */
     skuffeFil.addEventListener('change', function () {
       loadDrawerFile(skuffeFil.files && skuffeFil.files[0]);
     });
+    if (skuffeLogin) {
+      skuffeLogin.addEventListener('submit', function (e) {
+        e.preventDefault();
+        const kode = skuffeKode ? skuffeKode.value : '';
+        if (!kode) return;
+        skuffeKode.value = '';
+        syncLogInd(kode);
+      });
+    }
+    if (skuffeLogUd) skuffeLogUd.addEventListener('click', syncLogUd);
+    if (skuffeHent) skuffeHent.addEventListener('click', function () { syncHent(); });
     skuffe.addEventListener('click', function (e) { if (e.target === skuffe) closeDrawer(); });
     document.addEventListener('keydown', function (e) {
       if (e.key === 'Escape' && !skuffe.hidden) closeDrawer();
     });
     renderDrawer();
+    visSync();
+    syncTjek();               // er der en server, og er man logget ind der
   }
 
   /* ============================================================

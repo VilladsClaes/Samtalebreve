@@ -819,6 +819,73 @@ body {
   color: rgba(60, 46, 30, .62);
 }
 
+/* ---------- skuffen på serveren: log ind, hent, log ud ---------- */
+
+.skuffe__sync {
+  margin: 10px 12px 0;
+  padding: 9px 10px;
+  background: rgba(255, 253, 245, .5);
+  border: 1px solid rgba(70, 56, 40, .18);
+  border-radius: 2px;
+}
+.skuffe__sync[hidden] { display: none; }
+
+.skuffe__login { display: flex; align-items: flex-end; gap: 8px; margin: 0; }
+.skuffe__label {
+  flex: none;
+  font-size: .68rem;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: rgba(60, 46, 30, .6);
+  padding-bottom: 8px;
+}
+.skuffe__login input {
+  flex: 1;
+  min-width: 0;
+  font-family: var(--font-soft);
+  font-size: .86rem;
+  color: var(--ink);
+  background: #fffdf6;
+  border: 1px solid rgba(70, 56, 40, .3);
+  border-radius: 2px;
+  padding: 6px 8px;
+}
+.skuffe__login button {
+  flex: none;
+  font-family: var(--font-soft);
+  font-size: .8rem;
+  letter-spacing: .04em;
+  color: #f6ecd6;
+  background: #2f2820;
+  border: 1px solid #2f2820;
+  border-radius: 2px;
+  padding: 7px 12px;
+  cursor: pointer;
+}
+.skuffe__login button:hover { background: #3d332a; }
+
+.skuffe__syncNote {
+  margin: 6px 0 0;
+  font-size: .76rem;
+  line-height: 1.45;
+  color: rgba(60, 46, 30, .68);
+}
+
+.skuffe__syncRow { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 7px; }
+.skuffe__syncRow button {
+  font-family: var(--font-soft);
+  font-size: .74rem;
+  letter-spacing: .04em;
+  color: #3a2f22;
+  background: rgba(255, 255, 255, .5);
+  border: 1px solid rgba(70, 56, 40, .28);
+  border-radius: 2px;
+  padding: 5px 10px;
+  cursor: pointer;
+}
+.skuffe__syncRow button:hover { background: #fff8e8; }
+.skuffe__syncRow button[hidden] { display: none; }
+
 .skuffe__list {
   flex: 1;
   min-height: 0;

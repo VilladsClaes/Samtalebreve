@@ -1,0 +1,16 @@
+<?php
+/* Skuffens database.
+   Kopiér denne fil til config.php og ret oplysningerne — eller lad
+   opsaet.php skrive den for dig. config.php skal ikke deles med nogen
+   og ikke lægges i git (den står i .gitignore). */
+
+return array(
+    'driver' => 'mysql',                    // 'mysql' eller 'sqlite'
+    'host'   => 'localhost',                // står i webhotellets kontrolpanel
+    'navn'   => 'dit_database_navn',
+    'bruger' => 'dit_brugernavn',
+    'kode'   => 'dit_kodeord',
+
+    // bruges kun hvis driver er 'sqlite' — så skal der ikke oprettes noget i panelet
+    // 'fil' => __DIR__ . '/skuffe.sqlite',
+);

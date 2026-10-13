@@ -1,0 +1,11 @@
+# skuffens egne filer — de hører til på serveren, ikke i git
+skuffe/config.php
+skuffe/*.sqlite
+skuffe/*.sqlite-*
+skuffe/*.sqlite-journal
+
+# småtteri fra maskinen
+*.log
+.DS_Store
+Thumbs.db
+__MACOSX/
