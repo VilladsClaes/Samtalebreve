@@ -19,13 +19,16 @@ Læg hele siden op, som den ligger — `index.html`, `app.js`, `style.css`,
 | `skuffe/.htaccess` | ja | lukker for at hente `config.php` direkte (virker kun på Apache) |
 | `skuffe/opsaet.php` | ja, midlertidigt | bruges én gang til at sætte det hele op — **slet den bagefter** |
 | `skuffe/skema.sql` | nej | kun hvis du hellere vil oprette tabellerne i phpMyAdmin |
-| `skuffe/config.php.example` | nej | en skabelon; `opsaet.php` skriver selv `config.php` |`skuffe/config.php` må **ikke** lægges nogen steder hen, hvor andre kan hente
-  den — den indeholder dit databasekodeord. Den står allerede i `.gitignore`,
-  og `opsaet.php` skriver den selv på serveren, så den behøver ikke være med i
-  det du lægger op.
+| `skuffe/config.php.example` | nej | en skabelon; `opsaet.php` skriver selv `config.php` |
 
-  Klar-til-upload-pakken ligger som `breve-villadsclaes.dk.zip` i din
-  Downloads-mappe: den indeholder præcis de filer, der skal op, og intet andet.
+`skuffe/config.php` må **ikke** lægges nogen steder hen, hvor andre kan hente
+den — den indeholder dit databasekodeord. Den står allerede i `.gitignore`, og
+`opsaet.php` skriver den selv på serveren, så den behøver ikke være med i det, du
+lægger op.
+
+Klar-til-upload-pakken ligger som `breve-villadsclaes.dk.zip` i din
+Downloads-mappe (og udpakket ved siden af): den indeholder præcis de filer, der
+skal op, og intet andet.
 
 ## Sådan gør du
 
@@ -87,6 +90,30 @@ Brevene bygger deres links af den adresse, siden bliver åbnet på — så snart
 siden ligger på `https://breve.villadsclaes.dk/`, peger nye breve derhen af sig
 selv. Den gamle adresse på GitHub Pages bliver liggende som en kopi, og
 `<link rel="canonical">` i `index.html` peger nu på det nye domæne.
+
+## På Simply.com (hed tidligere UnoEuro)
+
+Webhotellet ligger på `93.191.156.11` — Simply.coms servere. Deres vejledninger
+siger:
+
+1. **Siden skal stå til PHP.** Under **Website → Change to ASP/PHP** (eller
+   *PHP Version*) vælges PHP, ikke ASP. Vælger man ASP, kører siden på Windows/IIS,
+   hvor `.htaccess` ikke virker — og så skal `skuffe/.htaccess` blot slettes, for
+   den behøves ikke. Vælg gerne PHP 8.0 eller nyere.
+2. **Webmappen er `public_html`.** Den kan ikke ændres. Det er dér, `index.html`,
+   `app.js`, `style.css`, `data.js` og mappen `skuffe/` skal ligge.
+3. **Databasen oprettes under MySQL** i kontrolpanelet — ikke i phpMyAdmin.
+   Vært, navn, brugernavn og adgangskode står i velkomstmailen eller samme sted.
+   Værten er typisk `localhost`.
+4. **Subdomænet `breve.villadsclaes.dk`** oprettes under **Website**. Tjek i
+   panelet, hvilken mappe det peger på, og læg filerne der.
+5. **Filen op.** Deres filhåndtering kan uploade, men det er ikke sikkert, den kan
+   pakke et arkiv ud; FTP er den sikre vej (træk hele indholdet af mappen over i
+   `public_html`). Findes der SSH på pakken, kan zip-filen også lægges op og
+   pakkes ud med `unzip`.
+
+Siden svarer i dag *(13. oktober 2026)* med en fejl fra serveren, fordi
+subdomænet endnu ikke er bundet til en mappe — det er første trin i panelet.
 
 ## Krav
 
