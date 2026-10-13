@@ -43,6 +43,9 @@
   const skuffeClose = document.getElementById('skuffeClose');
   const skuffeClose2 = document.getElementById('skuffeClose2');
   const skuffeClear = document.getElementById('skuffeClear');
+  const skuffeGem = document.getElementById('skuffeGem');
+  const skuffeLaes = document.getElementById('skuffeLaes');
+  const skuffeFil = document.getElementById('skuffeFil');
   const skuffeStatus = document.getElementById('skuffeStatus');
 
   /* ============================================================
@@ -1448,15 +1451,19 @@ men kler den nye tekst på bagefter og sætter markøren tilbage på plads. */
     }
   });
 
+  // den adresse et brev-link bygges på. Er siden åbnet som en fil på maskinen,
+  // findes der ingen adresse at dele; så peger vi på den udgivne side i stedet.
+  function letterBase() {
+    const canon = document.querySelector('link[rel="canonical"]');
+    return (window.location.protocol === 'file:' && canon)
+      ? canon.href
+      : window.location.origin + window.location.pathname;
+  }
+
   // linket til det brev der står på papiret — kort, og uden selve teksten i sig.
   // Svarene kan ikke findes igen på et aftryk, så de følger med i linket selv.
   function letterLink(sent) {
-    const canon = document.querySelector('link[rel="canonical"]');
-    // er siden åbnet som en fil på maskinen, findes der ingen adresse at dele;
-    // så peger vi på den udgivne side i stedet
-    const base = (window.location.protocol === 'file:' && canon)
-      ? canon.href
-      : window.location.origin + window.location.pathname;
+    const base = letterBase();
     if (!shown) return base;
     const p = new URLSearchParams();
     p.set('d', dayStamp(shown.day));
@@ -1739,6 +1746,110 @@ men kler den nye tekst på bagefter og sætter markøren tilbage på plads. */
     drawerStatus('skuffen er ryddet');
   }
 
+  /* ---------- skuffen som fil ----------
+     Skuffen bor i denne ene browser, men den skal kunne flytte med: linkene
+     skrives ud i en lille fil, som kan læses ind på en anden maskine. Det er
+     ikke brevene selv, der rejser — det er de samme links, som modtageren fik,
+     og de bliver lagt sammen med det, der ligger i skuffen i forvejen, så en
+     tråd der er kommet længere på den anden maskine fører kortet videre. */
+  const SKUFFE_FILE = 1;                  // filens form; kan udvides senere
+  const SKUFFE_FILE_MAX = 1024 * 1024;    // en fuld skuffe fylder ~70 kB
+
+  function drawerFileText() {
+    const breve = drawer.map(function (e) { return { url: e.url, at: e.at }; });
+    return JSON.stringify({
+      skuffen: SKUFFE_FILE,
+      hentet: new Date().toISOString(),
+      breve: breve
+    }, null, 2) + '\n';
+  }
+
+  function downloadDrawer() {
+    if (guest) return;
+    if (!drawer.length) { drawerStatus('der er ingen breve at gemme endnu'); return; }
+    const blob = new Blob([drawerFileText()], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'skuffen-' + dayStamp(new Date()) + '.json';
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(function () { URL.revokeObjectURL(url); a.remove(); }, 1500);
+    drawerStatus('filen med ' + drawer.length + (drawer.length === 1 ? ' brev' : ' breve') + ' ligger nu i dine downloads');
+  }
+
+  // læser filens breve — og kaster alt over bord, der ikke er et brev-link
+  function readDrawerFile(text) {
+    let data;
+    try { data = JSON.parse(text); } catch (e) { return null; }
+    const liste = Array.isArray(data) ? data : (data && Array.isArray(data.breve) ? data.breve : null);
+    if (!liste) return null;
+
+    const ud = [];
+    for (let i = 0; i < liste.length; i++) {
+      const it = liste[i];
+      if (!it || typeof it.url !== 'string') continue;
+      const p = urlParts(it.url);
+      if (!p || (!p.c && !p.q)) continue;             // ikke et brev-link
+      // linket peger på den adresse, brevet bliver læst fra her — ellers ville
+      // et kort fra en anden maskine stå med en død adresse
+      let url;
+      try { url = letterBase() + new URL(it.url, window.location.href).search; } catch (e) { continue; }
+      const at = Number(it.at);
+      const dag = dateFromStamp(p.d);
+      ud.push({
+        url: url,
+        at: isFinite(at) && at > 0 ? at : (dag ? dag.getTime() : Date.now())
+      });
+    }
+    return ud;
+  }
+
+  // lægger filens breve ind ved siden af dem, der ligger der — samme brev bliver
+  // ikke to kort, og den tråd der er længst, er den der bliver stående
+  function mergeDrawer(ind) {
+    let nye = 0, videre = 0;
+    for (let i = 0; i < ind.length; i++) {
+      const ind_ = urlParts(ind[i].url);
+      let hit = -1;
+      for (let k = 0; k < drawer.length; k++) {
+        const it = urlParts(drawer[k].url);
+        if (!it || !sameLetter(it, ind_)) continue;
+        if (!isStartOf(it, ind_) && !isStartOf(ind_, it)) continue;
+        if (hit < 0 || urlParts(drawer[hit].url).rs.length < it.rs.length) hit = k;
+      }
+      if (hit < 0) { drawer.push(ind[i]); nye++; continue; }
+      if (ind_.rs.length > urlParts(drawer[hit].url).rs.length) { drawer[hit].url = ind[i].url; videre++; }
+      if (ind[i].at > drawer[hit].at) drawer[hit].at = ind[i].at;
+    }
+    drawer.sort(function (a, b) { return b.at - a.at; });
+    if (drawer.length > SKUFFE_MAX) drawer = drawer.slice(0, SKUFFE_MAX);
+    return { nye: nye, videre: videre };
+  }
+
+  async function loadDrawerFile(file) {
+    if (guest || !file) return;
+    if (file.size > SKUFFE_FILE_MAX) { drawerStatus('filen er for stor til at v\u00e6re en skuffe'); return; }
+    let text = '';
+    try { text = await file.text(); } catch (e) { drawerStatus('kunne ikke l\u00e6se filen'); return; }
+
+    const ind = readDrawerFile(text);
+    if (!ind) { drawerStatus('filen ligner ikke en skuffe'); return; }
+    if (!ind.length) { drawerStatus('der var ingen breve i filen'); return; }
+
+    const ud = mergeDrawer(ind);
+    const kept = saveDrawer(drawer);
+    if (kept) drawer = kept;
+    else say('skuffen kunne ikke gemmes i denne browser');
+    renderDrawer();
+
+    let msg = 'l\u00e6ste ' + ind.length + (ind.length === 1 ? ' brev' : ' breve');
+    if (ud.nye) msg += ' \u00b7 ' + (ud.nye === 1 ? '1 ny' : ud.nye + ' nye');
+    if (ud.videre) msg += ' \u00b7 ' + ud.videre + (ud.videre === 1 ? ' tr\u00e5d' : ' tr\u00e5de') + ' f\u00f8rt videre';
+    if (!ud.nye && !ud.videre) msg += ' \u00b7 de stod her allerede';
+    drawerStatus(msg);
+  }
+
   if (!guest) {
     btnSkuffe.addEventListener('click', function () {
       if (skuffe.hidden) openDrawer(); else closeDrawer();
@@ -1746,6 +1857,14 @@ men kler den nye tekst på bagefter og sætter markøren tilbage på plads. */
     skuffeClose.addEventListener('click', closeDrawer);
     skuffeClose2.addEventListener('click', closeDrawer);
     skuffeClear.addEventListener('click', clearDrawer);
+    skuffeGem.addEventListener('click', downloadDrawer);
+    skuffeLaes.addEventListener('click', function () {
+      skuffeFil.value = '';          // så den samme fil kan læses ind to gange
+      skuffeFil.click();
+    });
+    skuffeFil.addEventListener('change', function () {
+      loadDrawerFile(skuffeFil.files && skuffeFil.files[0]);
+    });
     skuffe.addEventListener('click', function (e) { if (e.target === skuffe) closeDrawer(); });
     document.addEventListener('keydown', function (e) {
       if (e.key === 'Escape' && !skuffe.hidden) closeDrawer();

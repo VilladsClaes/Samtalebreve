@@ -894,6 +894,7 @@ body {
 }
 .skuffe__status { margin-right: auto; font-size: .78rem; color: rgba(60, 46, 30, .65); }
 .skuffe__row { display: flex; flex-wrap: wrap; gap: 6px; }
+.skuffe__row button span { margin-right: 6px; }
 .skuffe__row button[disabled] { opacity: .45; cursor: default; }
 #skuffeClear { color: #7a2f18; border-color: rgba(122, 47, 24, .4); }
 #skuffeClear[disabled] { color: rgba(122, 47, 24, .55); border-color: rgba(122, 47, 24, .22); }

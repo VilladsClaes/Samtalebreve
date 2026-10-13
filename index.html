@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Special+Elite&family=Courier+Prime:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=29">
+  <link rel="stylesheet" href="style.css?v=30">
 </head>
 <body>
 
@@ -166,20 +166,24 @@
         <h2 class="skuffe__title">Skuffen</h2>
         <button type="button" class="skuffe__icon" id="skuffeClose" aria-label="Luk skuffen">&#10005;</button>
       </header>
-      <p class="skuffe__note">Her lægger de breve sig, du sender videre — ikke som en kopi, men som det link, modtageren fik. Tryk på et brev for at åbne det, præcis som det blev sendt. Kun denne browser kan se skuffen.</p>
+      <p class="skuffe__note">Her lægger de breve sig, du sender videre — ikke som en kopi, men som det link, modtageren fik. Tryk på et brev for at åbne det, præcis som det blev sendt. Kun denne browser kan se skuffen, men den kan gemmes som en fil og læses ind et andet sted.</p>
       <ul class="skuffe__list" id="skuffeList"></ul>
       <p class="skuffe__empty" id="skuffeEmpty" hidden>Skuffen er tom. Sender du et brev videre, lægger det sig her, så det kan findes igen.</p>
       <footer class="skuffe__foot">
         <span class="skuffe__status" id="skuffeStatus"></span>
         <div class="skuffe__row">
+          <button type="button" id="skuffeGem"><span aria-hidden="true">&#8681;</span> gem som fil</button>
+          <button type="button" id="skuffeLaes"><span aria-hidden="true">&#8679;</span> læs fil</button>
           <button type="button" id="skuffeClear">ryd skuffen</button>
           <button type="button" id="skuffeClose2">luk</button>
         </div>
       </footer>
+      <!-- filen læses her, men feltet skal ikke ses — knappen ovenfor gør arbejdet -->
+      <input type="file" id="skuffeFil" accept=".json,application/json" hidden>
     </div>
   </div>
 
   <script src="data.js?v=26"></script>
-  <script src="app.js?v=30"></script>
+  <script src="app.js?v=31"></script>
 </body>
 </html>
