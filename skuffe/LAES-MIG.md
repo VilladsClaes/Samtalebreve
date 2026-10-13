@@ -8,6 +8,14 @@ og svar kan hentes på en hvilken som helst computer.
 Det er kun dig, der kan se den. Der er ingen oprettelse af brugere, ingen e-mail
 og ingen deling — serveren kender ét menneske: dig.
 
+> **Læs det her først.** `villadsclaes.dk` har allerede en side, og lige nu svarer
+> `breve.villadsclaes.dk` med *den samme* side (samme 7534 bytes, samme
+> indhold) — subdomænet er altså endnu ikke bundet til sin egen mappe. Lægger du
+> filerne op i den fælles webmappe nu, overskriver `index.html` og `app.js`
+> forsiden på `villadsclaes.dk`. **Bind derfor subdomænet til sin egen mappe i
+> panelet først**, og læg filerne der. Tjek efter med et hurtigt kig på begge
+> adresser: de skal vise hver sin side.
+
 ## Hvad der skal op (til `breve.villadsclaes.dk`)
 
 Læg hele siden op, som den ligger — `index.html`, `app.js`, `style.css`,
@@ -109,11 +117,20 @@ siger:
    panelet, hvilken mappe det peger på, og læg filerne der.
 5. **Filen op.** Deres filhåndtering kan uploade, men det er ikke sikkert, den kan
    pakke et arkiv ud; FTP er den sikre vej (træk hele indholdet af mappen over i
-   `public_html`). Findes der SSH på pakken, kan zip-filen også lægges op og
-   pakkes ud med `unzip`.
+   den mappe, subdomænet peger på). Findes der SSH på pakken, kan zip-filen også
+   lægges op og pakkes ud med `unzip`.
+6. **Slå HTTPS til for subdomænet.** I dag svarer `breve.villadsclaes.dk` kun på
+   `http://` — der er endnu ikke et certifikat til subdomænet, så
+   `https://breve.villadsclaes.dk/` fejler. Certifikatet bestilles i panelet
+   (Simply.com udsteder det gratis), og bagefter virker adgangskoden og linkene
+   også over en sikker forbindelse. Indtil da virker siden fint over `http://`,
+   og breve sendt derfra får `http://`-links.
 
-Siden svarer i dag *(13. oktober 2026)* med en fejl fra serveren, fordi
-subdomænet endnu ikke er bundet til en mappe — det er første trin i panelet.
+**Om serveren:** `villadsclaes.dk` svarer med `Microsoft-IIS/10.0`, altså
+Windows. To ting følger af det: `.htaccess` bliver ignoreret (slet den gerne, den
+er ikke nødvendig — `config.php` bliver kørt som PHP og giver ingen tekst ud),
+og PHP skal være slået til for mappen. Står webhotellet til ASP, skiftes der til
+PHP i panelet.
 
 ## Krav
 
