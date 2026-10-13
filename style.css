@@ -134,6 +134,9 @@ body {
   min-height: 1.95em;
   position: relative;
   letter-spacing: .012em;
+  /* hvert mellemrum er en plads på papiret — også det sidste i linjen og to
+     efter hinanden; uden det falder de sammen og forsvinder */
+  white-space: pre-wrap;
 }
 
 .line--date {
@@ -323,6 +326,7 @@ body {
   margin: 0;
   color: var(--ink);
   letter-spacing: .012em;
+  white-space: pre-wrap;      /* svaret står med de mellemrum, der blev skrevet */
 }
 
 /* et svar der er klippet over, siger til i stedet for bare at mangle */
@@ -390,6 +394,10 @@ body {
   caret-color: rgba(30, 24, 18, .85);
   word-wrap: break-word;
   overflow-wrap: anywhere;
+  /* på en skrivemaskine tager hvert mellemrum sin plads. Uden pre-wrap falder
+     de sammen — et mellemrum i bunden af teksten bliver usynligt og markøren
+     står stille, så det ser ud som om mellemrummet ikke kom med */
+  white-space: pre-wrap;
 }
 .editor:empty::before {
   content: attr(data-placeholder);
