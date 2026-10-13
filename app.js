@@ -902,6 +902,15 @@ men kler den nye tekst på bagefter og sætter markøren tilbage på plads. */
 
   const sharedLetter = readShared();
 
+  /* ---------- et brev nogen har sendt videre: kun et brev ----------
+     Er man landet på et delt link, er man gæst i brevet og skal ikke have
+     værktøjerne til at passe indholdet. Panelet, knappen der åbner det og
+     formateringsrækken over skrivefeltet bliver derfor taget ud af siden
+     nedenfor — ikke bare skjult. Skrivefeltet selv bliver, for et svar er
+     hele grunden til at brevet blev sendt. */
+  const guest = !!sharedLetter;
+  if (guest) document.body.classList.add('is-guest');
+
   function revealEditor() {
     writing.hidden = false;
     if (audio) audio.paperFeed();
@@ -2271,4 +2280,15 @@ men kler den nye tekst på bagefter og sætter markøren tilbage på plads. */
   document.addEventListener('visibilitychange', function () {
     if (!document.hidden && audio) audio.resume();
   });
+
+  /* ============================================================
+     10. Gæsten: brevet uden værktøjskassen
+     ============================================================ */
+  // Nu hvor alt er koblet op, kan værktøjerne tages ud af siden. Det sker til
+  // sidst, så koden ovenfor stadig har fat i de elementer den kender.
+  if (guest) {
+    admin.remove();
+    btnAdmin.remove();
+    toolbar.remove();
+  }
 })();
