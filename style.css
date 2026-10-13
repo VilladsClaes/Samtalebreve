@@ -292,6 +292,48 @@ body {
   filter: blur(.55px);
 }
 
+/* ---------- svar der er kommet tilbage ----------
+   De står under spørgsmålet, i samme blæk som resten af brevet, men rykket
+   lidt ind og med en tynd streg i siden — som et svar skrevet i marginen. */
+
+.replies {
+  margin-top: 1.5em;
+  opacity: 0;
+  transition: opacity 900ms ease;
+}
+.replies.is-shown { opacity: 1; }
+
+.reply {
+  margin: 0 0 1.25em;
+  padding-left: 14px;
+  border-left: 1px dashed rgba(84, 66, 44, .3);
+}
+.reply:last-child { margin-bottom: 0; }
+
+.reply__mark {
+  margin: 0 0 .35em;
+  font-family: var(--font-soft);
+  font-size: .6em;
+  letter-spacing: .24em;
+  text-transform: uppercase;
+  color: rgba(60, 48, 34, .58);
+}
+
+.reply__text {
+  margin: 0;
+  color: var(--ink);
+  letter-spacing: .012em;
+}
+
+/* et svar der er klippet over, siger til i stedet for bare at mangle */
+.reply__note {
+  margin: 0;
+  font-family: var(--font-soft);
+  font-size: .62em;
+  letter-spacing: .1em;
+  color: rgba(126, 58, 38, .8);
+}
+
 /* ---------- skrivefeltet ---------- */
 
 .writing {
@@ -747,7 +789,7 @@ body {
   /* alt skrevet skal stå frem, uanset animationer */
   .ch { opacity: 1 !important; visibility: visible !important; filter: none !important; }
   .ch.dbl { text-shadow: none !important; }
-  .writing, .signoff, .actions { opacity: 1 !important; filter: none !important; }
+  .writing, .signoff, .actions, .replies { opacity: 1 !important; filter: none !important; }
 
   .letter { font-size: 12pt; line-height: 1.75; }
   .line--date { color: #444; }

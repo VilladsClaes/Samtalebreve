@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Special+Elite&family=Courier+Prime:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=26">
+  <link rel="stylesheet" href="style.css?v=28">
 </head>
 <body>
 
@@ -27,6 +27,9 @@
         </div>
         <p class="line line--question" id="lineQuestion"></p>
 
+        <!-- svar der er kommet tilbage: de skrives her, under spørgsmålet -->
+        <section class="replies" id="replies" hidden></section>
+
         <section class="writing" id="writing" hidden>
           <div class="toolbar" id="toolbar" role="toolbar" aria-label="Formatering">
             <button type="button" data-cmd="bold" title="Fed"><b>B</b></button>
@@ -42,7 +45,7 @@
           <div class="actions" id="actions">
             <button type="button" id="btnPrint"><span aria-hidden="true">&#9095;</span> gem som PDF</button>
             <button type="button" id="btnImage"><span aria-hidden="true">&#8681;</span> gem som billede</button>
-            <button type="button" id="btnShare"><span aria-hidden="true">&#8599;</span> send videre</button>
+            <button type="button" id="btnShare"><span aria-hidden="true">&#8599;</span> <span id="btnShareLabel">send videre</span></button>
           </div>
           <p class="signoff" aria-hidden="true">— brevet l&aelig;gges i skuffen —</p>
         </section>
@@ -154,6 +157,6 @@
   </div>
 
   <script src="data.js?v=26"></script>
-  <script src="app.js?v=27"></script>
+  <script src="app.js?v=28"></script>
 </body>
 </html>

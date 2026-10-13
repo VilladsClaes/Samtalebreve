@@ -23,6 +23,7 @@
   const lineDate = document.getElementById('lineDate');
   const lineCompliment = document.getElementById('lineCompliment');
   const lineQuestion = document.getElementById('lineQuestion');
+  const repliesBox = document.getElementById('replies');
   const tape = document.getElementById('tape');
   const writing = document.getElementById('writing');
   const editor = document.getElementById('editor');
@@ -836,6 +837,37 @@ men kler den nye tekst på bagefter og sætter markøren tilbage på plads. */
     return isFinite(d.getTime()) ? d : null;
   }
 
+  /* ---------- svaret selv ----------
+     De to linjer kan linket finde igen på deres fingeraftryk, men et svar er
+     ny tekst hver gang og findes ikke i nogen liste. Derfor følger svaret med
+     i linket som tal og bogstaver (base64url) i sit eget lille felt: r=….
+     Hvert svar får et felt, så et link kan bære en hel lille samtale — og
+     for lange svar afvises, for et link der knækker, er værre end ingen mail. */
+  const MAX_LINK = 1800;
+
+  function toB64url(text) {
+    const bytes = new TextEncoder().encode(text);
+    let bin = '';
+    for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+    return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  }
+
+  function fromB64url(s) {
+    if (!s) return '';
+    try {
+      const b = String(s).replace(/-/g, '+').replace(/_/g, '/').replace(/=+$/, '');
+      const bin = atob(b + '='.repeat((4 - (b.length % 4)) % 4));
+      const bytes = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+      const text = new TextDecoder('utf-8', { fatal: true }).decode(bytes);
+      // er linket klippet over, bliver svaret sjældent læsbart — og vi vil
+      // hellere sige det højt end at gætte på, hvad der stod
+      return toB64url(text) === b ? text : null;
+    } catch (e) {
+      return null;          // se broken i readShared
+    }
+  }
+
   const complimentList = () => (content.compliments.length ? content.compliments : DEFAULTS.compliments);
 
   function readShared() {
@@ -846,10 +878,23 @@ men kler den nye tekst på bagefter og sætter markøren tilbage på plads. */
     if (!cPrint && !qPrint) return null;
     const compliment = findByPrint(complimentList(), cPrint, lineOf);
     const question = findByPrint(questionsList(), qPrint, (it) => it.text);
+
+    const replies = [];
+    let broken = 0;                       // svar der ikke kunne læses igen
+    let raw = [];
+    try { raw = p.getAll('r') || []; } catch (e) { raw = []; }
+    for (let i = 0; i < raw.length; i++) {
+      const t = fromB64url(raw[i]);
+      if (t == null) { broken++; continue; }
+      if (t.trim()) replies.push(t.trim());
+    }
+
     return {
       day: dateFromStamp(p.get('d')),
       compliment: compliment,
       question: question,
+      replies: replies,
+      broken: broken,
       // en af linjerne findes ikke mere — den er rettet siden linket blev sendt
       short: !!((cPrint && !compliment) || (qPrint && !question))
     };
@@ -875,6 +920,84 @@ men kler den nye tekst på bagefter og sætter markøren tilbage på plads. */
     }
   }
 
+  /* ---------- svarene skrives neden under spørgsmålet ----------
+     Først et lille mærke, der skrives færdigt af maskinen. Så selve svaret,
+     der ruller ind fra venstre som en hånd, der skriver — ét anslag ad gangen,
+     så det stadig er den samme blyant der har været på papiret. */
+  const REPLY_MARKS = ['svar', 'svar tilbage', 'svar igen'];
+
+  function replyMark(i) {
+    return REPLY_MARKS[Math.min(i, REPLY_MARKS.length - 1)];
+  }
+
+  async function writeReply(i, text, token) {
+    const block = document.createElement('div');
+    block.className = 'reply';
+
+    const mark = document.createElement('p');
+    mark.className = 'reply__mark';
+    const body = document.createElement('p');
+    body.className = 'reply__text';
+    block.appendChild(mark);
+    block.appendChild(body);
+    repliesBox.appendChild(block);
+
+    await typeLine(mark, replyMark(i), token);
+    if (token != null && token !== runToken) return;
+
+    // hver linje i svaret får sin egen række, så ordene ikke knækker midt over
+    const chars = [];
+    const lines = String(text).split(/\r?\n/);
+    for (let n = 0; n < lines.length; n++) {
+      if (n) body.appendChild(document.createElement('br'));
+      const row = document.createElement('span');
+      row.className = 'reply__row';
+      body.appendChild(row);
+      chars.push.apply(chars, buildLine(lines[n], row));
+    }
+
+    // en rolig rulle ind fra venstre — hurtigere jo længere svaret er
+    const span = (reduceMotion || state.skip || token == null) ? 0 : Math.min(2600, chars.length * 9);
+    const step = chars.length ? span / chars.length : 0;
+    for (let k = 0; k < chars.length; k++) {
+      chars[k].style.transitionDelay = Math.round(k * step) + 'ms';
+    }
+    for (let k = 0; k < chars.length; k++) chars[k].classList.add('on');
+
+    if (span) await sleep(Math.min(900, Math.max(140, span)));
+  }
+
+  async function writeReplies(token) {
+    const list = (sharedLetter && sharedLetter.replies) || [];
+    const broken = (sharedLetter && sharedLetter.broken) || 0;
+    repliesBox.innerHTML = '';
+    repliesBox.hidden = !(list.length || broken);
+    if (repliesBox.hidden) {
+      repliesBox.classList.remove('is-shown');
+      return;
+    }
+
+    const show = function () { repliesBox.classList.add('is-shown'); };
+    requestAnimationFrame(function () { requestAnimationFrame(show); });
+    setTimeout(show, 300);
+
+    for (let i = 0; i < list.length; i++) {
+      await writeReply(i, list[i], token);
+      if (token != null && token !== runToken) return;
+      if (!state.skip && i < list.length - 1) await sleep(420);
+    }
+
+    // et svar der ikke kan læses, skal ikke bare forsvinde uden videre
+    if (broken) {
+      const note = document.createElement('p');
+      note.className = 'reply__note';
+      note.textContent = broken === 1
+        ? 'et svar kunne ikke læses \u2014 linket er nok klippet over'
+        : broken + ' svar kunne ikke læses \u2014 linket er nok klippet over';
+      repliesBox.appendChild(note);
+    }
+  }
+
   // det der står på papiret lige nu — linket bygges af det
   let shown = null;
 
@@ -896,6 +1019,9 @@ men kler den nye tekst på bagefter og sætter markøren tilbage på plads. */
     await typeLine(lineQuestion, question.text, token);
     if (token !== runToken) return;
     if (!state.skip) await sleep(520);
+    await writeReplies(token);
+    if (token !== runToken) return;
+    if (!state.skip) await sleep(320);
     revealEditor();
   }
 
@@ -949,7 +1075,10 @@ men kler den nye tekst på bagefter og sætter markøren tilbage på plads. */
 
   // er man landet på et delt link, ligger brevet allerede og venter i maskinen
   if (sharedLetter && !sharedLetter.short) {
-    hint.innerHTML = '<span class="hint__key">&#9095;</span> et brev til dig \u2014 tryk for at l\u00e6se det';
+    const got = sharedLetter.replies.length > 0;
+    hint.innerHTML = got
+      ? '<span class="hint__key">&#8617;</span> et svar til dig \u2014 tryk for at l\u00e6se det'
+      : '<span class="hint__key">&#9095;</span> et brev til dig \u2014 tryk for at l\u00e6se det';
   }
 
   hint.addEventListener('click', begin);
@@ -1272,6 +1401,8 @@ men kler den nye tekst på bagefter og sætter markøren tilbage på plads. */
 
   function letterText() {
     const parts = [lineDate.innerText, '', lineCompliment.innerText, '', lineQuestion.innerText];
+    const received = (sharedLetter && sharedLetter.replies) || [];
+    for (let i = 0; i < received.length; i++) parts.push('', replyMark(i) + ':', received[i]);
     const answer = editor.innerText.replace(/\u00a0/g, ' ').trim();
     if (answer) parts.push('', 'Mit svar:', answer);
     return parts.join('\n');
@@ -1297,8 +1428,9 @@ men kler den nye tekst på bagefter og sætter markøren tilbage på plads. */
     }
   });
 
-  // linket til det brev der står på papiret — kort, og uden selve teksten i sig
-  function letterLink() {
+  // linket til det brev der står på papiret — kort, og uden selve teksten i sig.
+  // Svarene kan ikke findes igen på et aftryk, så de følger med i linket selv.
+  function letterLink(sent) {
     const canon = document.querySelector('link[rel="canonical"]');
     // er siden åbnet som en fil på maskinen, findes der ingen adresse at dele;
     // så peger vi på den udgivne side i stedet
@@ -1310,7 +1442,13 @@ men kler den nye tekst på bagefter og sætter markøren tilbage på plads. */
     p.set('d', dayStamp(shown.day));
     p.set('c', fingerprint(lineOf(shown.compliment)));
     p.set('q', fingerprint(shown.question.text));
+    (sent || []).forEach(function (t) { p.append('r', toB64url(t)); });
     return base + '?' + p.toString();
+  }
+
+  // det der står i skrivefeltet lige nu — hendes svar, hvis hun har skrevet et
+  function myReply() {
+    return editor.innerText.replace(/\u00a0/g, ' ').replace(/\s+$/, '').replace(/^[\s]+/, '');
   }
 
   function legacyCopy(text) {
@@ -1339,8 +1477,29 @@ men kler den nye tekst på bagefter og sætter markøren tilbage på plads. */
     return Promise.resolve(done(legacyCopy(text)));
   }
 
+  // knappen skifter ordlyd, når der står et svar i feltet — så det er til at se,
+  // at svaret følger med linket
+  const btnShareLabel = document.getElementById('btnShareLabel');
+  function syncShareLabel() {
+    if (!btnShareLabel) return;
+    btnShareLabel.textContent = myReply() ? 'send svaret videre' : 'send videre';
+  }
+  editor.addEventListener('input', syncShareLabel);
+  editor.addEventListener('compositionend', syncShareLabel);
+  syncShareLabel();
+
   btnShare.addEventListener('click', async function () {
-    const url = letterLink();
+    // brevet på papiret først — og så hendes svar, hvis hun har skrevet et
+    const sent = ((sharedLetter && sharedLetter.replies) || []).slice();
+    const answer = myReply();
+    if (answer) sent.push(answer);
+
+    const url = letterLink(sent);
+
+    if (url.length > MAX_LINK) {
+      say('svaret fylder for meget til et link \u2014 skriv et par s\u00e6tninger mindre');
+      return;
+    }
 
     // adresselinjen viser nu netop dette brev, så linket altid kan hentes derfra
     try { window.history.replaceState(null, '', url); } catch (e) {}
@@ -1355,9 +1514,10 @@ men kler den nye tekst på bagefter og sætter markøren tilbage på plads. */
     }
 
     const ok = await copyText(url);
-    say(ok
-      ? 'linket til brevet ligger i udklipsholderen'
-      : 'linket st\u00e5r i adresselinjen \u2014 kopi\u00e9r det derfra');
+    if (!ok) { say('linket st\u00e5r i adresselinjen \u2014 kopi\u00e9r det derfra'); return; }
+    say(answer
+      ? 'linket med dit svar ligger i udklipsholderen'
+      : 'linket til brevet ligger i udklipsholderen');
   });
 
   /* ============================================================
@@ -2002,6 +2162,9 @@ men kler den nye tekst på bagefter og sætter markøren tilbage på plads. */
     lineDate.textContent = '';
     lineCompliment.textContent = '';
     lineQuestion.textContent = '';
+    repliesBox.innerHTML = '';
+    repliesBox.classList.remove('is-shown');
+    repliesBox.hidden = true;
     writing.classList.remove('is-shown');
     writing.hidden = true;
     tape.classList.remove('is-on');
