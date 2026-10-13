@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Special+Elite&family=Courier+Prime:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=28">
+  <link rel="stylesheet" href="style.css?v=29">
 </head>
 <body>
 
@@ -79,6 +79,9 @@
     </button>
     <button class="ctl" id="btnAdmin" type="button" title="Rediger komplimenter og spørgsmål">
       <span class="ctl__ico">&#9998;</span><span class="ctl__txt">indhold</span>
+    </button>
+    <button class="ctl" id="btnSkuffe" type="button" title="De breve, du har sendt videre">
+      <span class="ctl__ico">&#9636;</span><span class="ctl__txt">skuffen</span><b class="ctl__n" id="skuffeCount" hidden>0</b>
     </button>
   </div>
 
@@ -156,7 +159,27 @@
     </div>
   </div>
 
+  <!-- skuffen: de breve du har sendt videre (kun for dig) -->
+  <div class="skuffe" id="skuffe" hidden>
+    <div class="skuffe__pane" role="dialog" aria-modal="true" aria-label="Skuffen med breve sendt videre">
+      <header class="skuffe__top">
+        <h2 class="skuffe__title">Skuffen</h2>
+        <button type="button" class="skuffe__icon" id="skuffeClose" aria-label="Luk skuffen">&#10005;</button>
+      </header>
+      <p class="skuffe__note">Her lægger de breve sig, du sender videre — ikke som en kopi, men som det link, modtageren fik. Tryk på et brev for at åbne det, præcis som det blev sendt. Kun denne browser kan se skuffen.</p>
+      <ul class="skuffe__list" id="skuffeList"></ul>
+      <p class="skuffe__empty" id="skuffeEmpty" hidden>Skuffen er tom. Sender du et brev videre, lægger det sig her, så det kan findes igen.</p>
+      <footer class="skuffe__foot">
+        <span class="skuffe__status" id="skuffeStatus"></span>
+        <div class="skuffe__row">
+          <button type="button" id="skuffeClear">ryd skuffen</button>
+          <button type="button" id="skuffeClose2">luk</button>
+        </div>
+      </footer>
+    </div>
+  </div>
+
   <script src="data.js?v=26"></script>
-  <script src="app.js?v=29"></script>
+  <script src="app.js?v=30"></script>
 </body>
 </html>

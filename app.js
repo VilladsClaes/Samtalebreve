@@ -35,6 +35,15 @@
   const btnImage = document.getElementById('btnImage');
   const btnShare = document.getElementById('btnShare');
   const toast = document.getElementById('toast');
+  const btnSkuffe = document.getElementById('btnSkuffe');
+  const skuffe = document.getElementById('skuffe');
+  const skuffeList = document.getElementById('skuffeList');
+  const skuffeEmpty = document.getElementById('skuffeEmpty');
+  const skuffeCount = document.getElementById('skuffeCount');
+  const skuffeClose = document.getElementById('skuffeClose');
+  const skuffeClose2 = document.getElementById('skuffeClose2');
+  const skuffeClear = document.getElementById('skuffeClear');
+  const skuffeStatus = document.getElementById('skuffeStatus');
 
   /* ============================================================
      1. Blæk-styling: hvert anslag får sin egen "hårdhed"
@@ -1066,6 +1075,7 @@ men kler den nye tekst på bagefter og sætter markøren tilbage på plads. */
 
   document.addEventListener('pointerdown', function (e) {
     if (e.target.closest('#admin')) return;      // panelet rører ikke brevet
+    if (e.target.closest('#skuffe')) return;     // skuffen heller ikke
     if (e.target.closest('.controls') || e.target.closest('.toolbar')) {
       ensureAudio();
       return;
@@ -1075,6 +1085,7 @@ men kler den nye tekst på bagefter og sætter markøren tilbage på plads. */
 
   document.addEventListener('keydown', function (e) {
     if (e.target.closest('#admin')) return;      // skriv frit i panelet
+    if (e.target.closest('#skuffe')) return;     // og i skuffen
     if (!state.started && !e.target.closest('#editor')) {
       begin();
     } else if (state.typing && (e.key === ' ' || e.key === 'Enter')) {
@@ -1516,6 +1527,9 @@ men kler den nye tekst på bagefter og sætter markøren tilbage på plads. */
     if (navigator.share) {
       try {
         await navigator.share({ title: 'Dagens brev', text: letterText(), url: url });
+        // afbrød man delingen, blev brevet ikke sendt — så skal det ikke i skuffen
+        rememberSent(url);
+        say('brevet er lagt i skuffen');
         return;
       } catch (e) {
         if (e && e.name === 'AbortError') return;
@@ -1524,13 +1538,223 @@ men kler den nye tekst på bagefter og sætter markøren tilbage på plads. */
 
     const ok = await copyText(url);
     if (!ok) { say('linket st\u00e5r i adresselinjen \u2014 kopi\u00e9r det derfra'); return; }
+    rememberSent(url);
     say(answer
-      ? 'linket med dit svar ligger i udklipsholderen'
-      : 'linket til brevet ligger i udklipsholderen');
+      ? 'linket med dit svar ligger i udklipsholderen \u00b7 brevet er lagt i skuffen'
+      : 'linket til brevet ligger i udklipsholderen \u00b7 brevet er lagt i skuffen');
   });
 
   /* ============================================================
-     9. Panelet: pas indholdet — redigér, bladr og hent data.js
+     9. Skuffen: de breve du har sendt videre
+     ============================================================ */
+  // Et brev, der er sendt videre, forsvinder ikke ud i luften: linket lægges i
+  // skuffen her i browseren, så det kan findes og åbnes igen — også når fanen
+  // er lukket og adresselinjen for længst skrevet over. Der gemmes ikke en kopi
+  // af brevet, men selve linket, for det er præcis det, modtageren fik: samme
+  // brev, samme svar — og det kan skrives om til brevet igen.
+  //
+  // Skuffen følger ét brev og ikke ét klik. Sender man først brevet og siden
+  // sit svar oveni, bliver det ikke to kort, men ét, der vokser med tråden —
+  // linket er den samme linje med et svar mere i sig.
+  //
+  // Skuffen hører til skrivebordet og fører regnskab med breve, der er sendt
+  // videre — uanset fra hvilken side af brevet det skete. Svarer man tilbage
+  // fra et brev, man har fået, er man gæst i det brev, men det er stadig ens
+  // eget link, der bliver nyere, så kortet skal følge tråden. Knappen er der
+  // ikke for gæsten: et brev til en anden er kun et brev.
+  const SKUFFE_KEY = 'dagensbrev.skuffe';
+  const SKUFFE_MAX = 40;                // flere breve end man kan holde styr på
+
+  // et link læses som de stumper, det blev bygget af — så skuffen kan se, om
+  // et nyt link er det samme brev som et, der allerede ligger i skuffen
+  function urlParts(url) {
+    try {
+      const p = new URL(url, window.location.href).searchParams;
+      return {
+        d: p.get('d') || '',
+        c: p.get('c') || '',
+        q: p.get('q') || '',
+        rs: p.getAll('r') || []
+      };
+    } catch (e) { return null; }
+  }
+
+  function readDrawer() {
+    try {
+      const arr = JSON.parse(localStorage.getItem(SKUFFE_KEY) || '[]');
+      if (!Array.isArray(arr)) return [];
+      return arr.filter(function (e) { return e && typeof e.url === 'string' && urlParts(e.url); });
+    } catch (e) { return []; }
+  }
+
+  // er der ikke plads i browserens lager, gemmer vi de nyeste breve frem for
+  // at tabe dem alle sammen
+  function saveDrawer(list) {
+    let keep = list;
+    for (let i = 0; i < 4; i++) {
+      try { localStorage.setItem(SKUFFE_KEY, JSON.stringify(keep)); return keep; }
+      catch (e) { keep = keep.slice(0, Math.max(1, Math.floor(keep.length / 2))); }
+    }
+    return null;
+  }
+
+  let drawer = readDrawer();
+
+  function sameLetter(a, b) { return a.d === b.d && a.c === b.c && a.q === b.q; }
+
+  // er det korte links svar begyndelsen på det langes, er det samme tråd
+  function isStartOf(short, long) {
+    if (short.rs.length > long.rs.length) return false;
+    for (let i = 0; i < short.rs.length; i++) if (short.rs[i] !== long.rs[i]) return false;
+    return true;
+  }
+
+  function repliesLabel(n) {
+    if (!n) return 'uden svar';
+    return n === 1 ? 'med 1 svar' : 'med ' + n + ' svar';
+  }
+
+  function sentWhen(ms) {
+    const d = new Date(ms);
+    const p2 = (v) => String(v).padStart(2, '0');
+    const hm = p2(d.getHours()) + ':' + p2(d.getMinutes());
+    const now = new Date();
+    const today = now.toDateString();
+    const yesterday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1).toDateString();
+    if (d.toDateString() === today) return 'sendt i dag ' + hm;
+    if (d.toDateString() === yesterday) return 'sendt i g\u00e5r ' + hm;
+    try {
+      return 'sendt ' + new Intl.DateTimeFormat('da-DK', { day: 'numeric', month: 'short' }).format(d) + ' ' + hm;
+    } catch (e) { return 'sendt ' + d.toLocaleDateString(); }
+  }
+
+  function drawerStatus(msg) { if (skuffeStatus) skuffeStatus.textContent = msg; }
+
+  function drawerRow(entry) {
+    const part = urlParts(entry.url) || { d: '', c: '', q: '', rs: [] };
+    const compliment = findByPrint(complimentList(), part.c, lineOf);
+    const li = document.createElement('li');
+    li.className = 'skuffe__item';
+
+    // rækken selv er et link og åbner brevet, som det blev sendt
+    const link = document.createElement('a');
+    link.className = 'skuffe__open';
+    link.href = entry.url;
+    link.target = '_blank';
+    link.rel = 'noopener';
+
+    const when = document.createElement('span');
+    when.className = 'skuffe__when';
+    when.textContent = sentWhen(entry.at) + ' \u00b7 ' + repliesLabel(part.rs.length);
+
+    const line = document.createElement('span');
+    line.className = 'skuffe__line';
+    line.textContent = compliment ? lineOf(compliment) : 'linjen er rettet siden \u2014 dagens linje st\u00e5r p\u00e5 brevet';
+
+    const day = document.createElement('span');
+    day.className = 'skuffe__day';
+    day.textContent = 'brevet: ' + formatDate(dateFromStamp(part.d) || new Date(entry.at));
+
+    link.appendChild(when);
+    link.appendChild(line);
+    link.appendChild(day);
+    li.appendChild(link);
+
+    const copy = document.createElement('button');
+    copy.type = 'button';
+    copy.className = 'skuffe__copy';
+    copy.textContent = 'kopi\u00e9r';
+    copy.title = 'l\u00e6g linket i udklipsholderen igen';
+    copy.addEventListener('click', async function () {
+      const ok = await copyText(entry.url);
+      drawerStatus(ok
+        ? 'linket ligger i udklipsholderen igen'
+        : 'kunne ikke kopiere \u2014 \u00e5bn brevet og tag linket fra adresselinjen');
+      if (ok) say('linket ligger i udklipsholderen');
+    });
+    li.appendChild(copy);
+
+    return li;
+  }
+
+  function renderDrawer() {
+    if (guest || !skuffeList) return;
+    skuffeList.innerHTML = '';
+    skuffeEmpty.hidden = !!drawer.length;
+    skuffeClear.disabled = !drawer.length;
+    for (let i = 0; i < drawer.length; i++) skuffeList.appendChild(drawerRow(drawer[i]));
+    if (skuffeCount) {
+      skuffeCount.textContent = String(drawer.length);
+      skuffeCount.hidden = !drawer.length;
+    }
+  }
+
+  // læg linket i skuffen. Er samme brev sendt før — nu med et svar mere i sig
+  // — bliver det ikke et nyt kort, men det gamle, der flytter op i toppen.
+  function rememberSent(url) {
+    if (!url) return;
+    const mine = urlParts(url);
+    if (!mine) return;
+
+    let hit = -1;
+    for (let i = 0; i < drawer.length; i++) {
+      const it = urlParts(drawer[i].url);
+      if (!it || !sameLetter(it, mine) || !isStartOf(it, mine)) continue;
+      // den længste fælles begyndelse er den tråd, der er ved at blive skrevet videre på
+      if (hit < 0 || urlParts(drawer[hit].url).rs.length < it.rs.length) hit = i;
+    }
+    if (hit >= 0) drawer.splice(hit, 1);
+    drawer.unshift({ url: url, at: Date.now() });
+    if (drawer.length > SKUFFE_MAX) drawer = drawer.slice(0, SKUFFE_MAX);
+
+    const kept = saveDrawer(drawer);
+    if (kept) drawer = kept;
+    else say('skuffen kunne ikke gemmes i denne browser');
+    renderDrawer();
+  }
+
+  function openDrawer() {
+    if (guest || !skuffe.hidden) return;
+    renderDrawer();
+    skuffe.hidden = false;
+    void skuffe.offsetHeight;            // så panelet glider ind frem for at stå der straks
+    skuffe.classList.add('is-on');
+    drawerStatus(drawer.length
+      ? 'det du har sendt videre \u2014 tryk p\u00e5 et brev for at \u00e5bne det'
+      : 'skuffen er tom endnu');
+  }
+
+  function closeDrawer() {
+    if (guest || skuffe.hidden) return;
+    skuffe.classList.remove('is-on');
+    setTimeout(function () { skuffe.hidden = true; }, 200);
+  }
+
+  function clearDrawer() {
+    if (guest || !drawer.length) return;
+    if (!window.confirm('Rydde skuffen? Linkene her forsvinder \u2014 breve, du allerede har sendt, er ikke p\u00e5virket.')) return;
+    drawer = [];
+    try { localStorage.removeItem(SKUFFE_KEY); } catch (e) {}
+    renderDrawer();
+    drawerStatus('skuffen er ryddet');
+  }
+
+  if (!guest) {
+    btnSkuffe.addEventListener('click', function () {
+      if (skuffe.hidden) openDrawer(); else closeDrawer();
+    });
+    skuffeClose.addEventListener('click', closeDrawer);
+    skuffeClose2.addEventListener('click', closeDrawer);
+    skuffeClear.addEventListener('click', clearDrawer);
+    skuffe.addEventListener('click', function (e) { if (e.target === skuffe) closeDrawer(); });
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && !skuffe.hidden) closeDrawer();
+    });
+    renderDrawer();
+  }
+
+  /* ============================================================
+     10. Panelet: pas indholdet — redigér, bladr og hent data.js
      ============================================================ */
 
   const admin = document.getElementById('admin');
@@ -2282,7 +2506,7 @@ men kler den nye tekst på bagefter og sætter markøren tilbage på plads. */
   });
 
   /* ============================================================
-     10. Gæsten: brevet uden værktøjskassen
+     11. Gæsten: brevet uden værktøjskassen
      ============================================================ */
   // Nu hvor alt er koblet op, kan værktøjerne tages ud af siden. Det sker til
   // sidst, så koden ovenfor stadig har fat i de elementer den kender.
@@ -2290,5 +2514,7 @@ men kler den nye tekst på bagefter og sætter markøren tilbage på plads. */
     admin.remove();
     btnAdmin.remove();
     toolbar.remove();
+    skuffe.remove();
+    btnSkuffe.remove();
   }
 })();
