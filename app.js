@@ -57,7 +57,13 @@
 
   /* ============================================================
      1. Blæk-styling: hvert anslag får sin egen "hårdhed"
-     ============================================================ */
+     ------------------------------------------------------------
+     Anslaget mærkes i hvor mættet det er, hvor hårdt det har ramt, og om det
+     trak blæk efter sig — altså i farve, vægt og slør. Det flytter sig ikke:
+     hverken skævt, op, ned eller sidelæns. Før fik hvert tegn sin egen lille
+     tilfældige forskydning og hældning, og det så ud som om bogstaverne hoppede,
+     mens de blev skrevet, og som om markøren sprang rundt i linjen. En
+     skrivemaskine sætter anslagene på linjen, i rækkefølge. */
   function applyInk(el, strength) {
     strength = strength || 1;
     const r = Math.random();
@@ -72,10 +78,6 @@
       op = rand(0.78, 1);               // normalt anslag
     }
     el.style.setProperty('--o', clamp(op * strength, 0, 1).toFixed(3));
-    el.style.setProperty('--rz', rand(-1.3, 1.3).toFixed(2) + 'deg');
-    el.style.setProperty('--ty', rand(-0.6, 0.6).toFixed(2) + 'px');
-    el.style.setProperty('--tx', rand(-0.5, 0.5).toFixed(2) + 'px');
-    el.style.setProperty('--sc', (1 + rand(-0.02, 0.02)).toFixed(3));
     if (Math.random() < 0.07) el.style.color = 'rgba(33,37,52,.92)'; // en anelse blåsort
   }
 
@@ -380,14 +382,6 @@
      ============================================================ */
   const state = { started: false, typing: false, skip: false };
 
-  function makeOrder(n) {
-    const jitter = Math.min(9, Math.max(2.2, n * 0.06));
-    const arr = [];
-    for (let i = 0; i < n; i++) arr.push({ i: i, k: i + rand(-jitter, jitter) });
-    arr.sort((a, b) => a.k - b.k);
-    return arr.map((o) => o.i);
-  }
-
   // bygger linjen op som enkelte anslag og mellemrum
   function buildLine(text, lineEl) {
     lineEl.textContent = '';
@@ -439,14 +433,16 @@
     caret.className = 'caret';
     lineEl.appendChild(caret);
 
-    const order = makeOrder(chars.length);
     const len = Math.max(1, chars.length);
     const base = reduceMotion ? 6 : clamp(66 - len * 0.06, 34, 66);
 
     state.typing = true;
-    for (let k = 0; k < order.length; k++) {
+    // ét anslag ad gangen, venstre mod højre: markøren flytter sig kun fremad,
+    // aldrig tilbage over det, der allerede står på papiret. Uroen ligger i
+    // rytmen — et lille tøvende ophold hist og her — ikke i rækkefølgen.
+    for (let k = 0; k < chars.length; k++) {
       if (token != null && token !== runToken) return;   // en nyere runde har overtaget
-      const ch = chars[order[k]];
+      const ch = chars[k];
       ch.classList.add('on');
       positionCaret(caret, ch);
 

@@ -212,13 +212,13 @@ body {
 /* et enkelt ord holdes sammen, så ordet ikke knækker midt over */
 .word { display: inline-block; white-space: nowrap; }
 
-/* hvert anslag */
+/* hvert anslag — det står på linjen, hvor det blev sat; hårdheden sidder i
+   farven, vægten og sløret, ikke i at flytte eller skæve bogstavet */
 .ch {
   display: inline-block;
   white-space: pre;
   opacity: 0;
   visibility: hidden;
-  transform: translate(var(--tx, 0), var(--ty, 0)) rotate(var(--rz, 0deg)) scale(var(--sc, 1));
   transition: opacity 110ms linear;
 }
 .ch.on {
