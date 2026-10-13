@@ -81,6 +81,17 @@
     if (Math.random() < 0.07) el.style.color = 'rgba(33,37,52,.92)'; // en anelse blåsort
   }
 
+  /* Et anslag toner frem over et øjeblik, når det sættes — men det må ikke
+     kunne blive stående usynligt. En fane der ikke bliver malet, eller en
+     maskine med travlt, rører ikke ved overgangen, og så står tegnet i koden
+     uden at være til at se på papiret. Derfor slippes overgangen lidt efter:
+     det sidste bliver det samme som det synlige. (Ventetiden er den, anslaget
+     selv venter på at komme ind, så f.eks. et svar stadig ruller.) */
+  function inkOn(el, vent) {
+    el.classList.add('on');
+    setTimeout(function () { el.style.transition = 'none'; }, (vent || 0) + 220);
+  }
+
   /* ============================================================
      2. Blækklatter
      ============================================================ */
@@ -443,7 +454,7 @@
     for (let k = 0; k < chars.length; k++) {
       if (token != null && token !== runToken) return;   // en nyere runde har overtaget
       const ch = chars[k];
-      ch.classList.add('on');
+      inkOn(ch);
       positionCaret(caret, ch);
 
       const c = ch.textContent;
@@ -496,10 +507,23 @@ men kler den nye tekst på bagefter og sætter markøren tilbage på plads. */
       while ((node = walker.nextNode())) {
         const len = node.nodeValue.length;
         if (!len) continue;
+        const hjem = node.parentNode;
+        const erAnslag = hjem && hjem !== editor && hjem.nodeType === 1 && hjem.childNodes.length === 1 &&
+                        (hjem.classList.contains('ch') || hjem.classList.contains('sp'));
+        if (left === 0 && erAnslag) {
+          // foran anslaget — samme grund som nedenfor, blot i den anden ende
+          r.setStartBefore(hjem);
+          r.collapse(true);
+          placed = true;
+          break;
+        }
         if (left < len) { r.setStart(node, left); r.collapse(true); placed = true; break; }
         if (left === len) {
-          // lige efter tegnet — uden om anslaget, så næste tastetryk bliver sit eget
-          r.setStartAfter(node);
+          // lige efter tegnet — uden om anslaget, så næste tastetryk bliver sit eget.
+          // Står markøren inde i selve anslaget, lægger browseren det næste tegn
+          // oveni det, der allerede står, og så bliver det gamle tegn skrevet om
+          // for hvert anslag — det blinker, og det kan ende med at stå usynligt.
+          if (erAnslag) r.setStartAfter(hjem); else r.setStartAfter(node);
           r.collapse(true);
           placed = true;
           break;
@@ -526,9 +550,10 @@ men kler den nye tekst på bagefter og sætter markøren tilbage på plads. */
         s.textContent = ' ';
         if (Math.random() < 0.2) s.style.paddingRight = rand(1.6, 3.6).toFixed(1) + 'px';
       } else {
-        s.className = 'ch on';
+        s.className = 'ch';
         s.textContent = c;
         applyInk(s, 1.12);
+        inkOn(s);
         if (fresh.length < limit) fresh.push(s);
       }
       frag.appendChild(s);
@@ -986,7 +1011,7 @@ men kler den nye tekst på bagefter og sætter markøren tilbage på plads. */
     for (let k = 0; k < chars.length; k++) {
       chars[k].style.transitionDelay = Math.round(k * step) + 'ms';
     }
-    for (let k = 0; k < chars.length; k++) chars[k].classList.add('on');
+    for (let k = 0; k < chars.length; k++) inkOn(chars[k], Math.round(k * step));
 
     if (span) await sleep(Math.min(900, Math.max(140, span)));
   }
